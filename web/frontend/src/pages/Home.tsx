@@ -92,22 +92,33 @@ const Home: React.FC = () => {
           <Col xs={24} sm={12} lg={8} key={index}>
             <Card
               hoverable
+              className="core-feature-card"
               style={{ height: '100%' }}
               bodyStyle={{ padding: '24px' }}
+              onClick={feature.action}
             >
-              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                {feature.icon}
-              </div>
-              <Title level={4} style={{ textAlign: 'center', marginBottom: '12px' }}>
-                {feature.title}
-              </Title>
-              <Paragraph style={{ textAlign: 'center', marginBottom: '20px' }}>
-                {feature.description}
-              </Paragraph>
-              <div style={{ textAlign: 'center' }}>
-                <Button type="primary" onClick={feature.action}>
-                  {feature.actionText}
-                </Button>
+              <div className="feature-content">
+                <div className="feature-icon" style={{ textAlign: 'center', marginBottom: '16px' }}>
+                  {feature.icon}
+                </div>
+                <Title level={4} className="feature-title" style={{ textAlign: 'center', marginBottom: '12px' }}>
+                  {feature.title}
+                </Title>
+                <Paragraph style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  {feature.description}
+                </Paragraph>
+                <div style={{ textAlign: 'center' }}>
+                  <Button 
+                    type="primary" 
+                    className="feature-button" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      feature.action();
+                    }}
+                  >
+                    {feature.actionText}
+                  </Button>
+                </div>
               </div>
             </Card>
           </Col>
@@ -170,30 +181,54 @@ const Home: React.FC = () => {
         </Title>
         <Row gutter={[24, 24]}>
           <Col xs={24} md={8}>
-            <Card style={{ textAlign: 'center', height: '100%' }}>
-              <SettingOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-              <Title level={4}>鲁棒性验证工具</Title>
-              <Paragraph>
-                为模型开发者提供专业的鲁棒性验证工具，帮助发现模型的潜在弱点和安全漏洞。
-              </Paragraph>
+            <Card 
+              className="core-feature-card" 
+              style={{ textAlign: 'center', height: '100%' }}
+              onClick={() => navigate('/evaluation')}
+            >
+              <div className="feature-content">
+                <div className="feature-icon">
+                  <SettingOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+                </div>
+                <Title level={4} className="feature-title">鲁棒性验证工具</Title>
+                <Paragraph>
+                  为模型开发者提供专业的鲁棒性验证工具，帮助发现模型的潜在弱点和安全漏洞。
+                </Paragraph>
+              </div>
             </Card>
           </Col>
           <Col xs={24} md={8}>
-            <Card style={{ textAlign: 'center', height: '100%' }}>
-              <BugOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
-              <Title level={4}>安全性提升</Title>
-              <Paragraph>
-                通过对抗训练提升模型在实际部署中的安全性，确保模型在恶意攻击下的稳定性。
-              </Paragraph>
+            <Card 
+              className="core-feature-card" 
+              style={{ textAlign: 'center', height: '100%' }}
+              onClick={() => navigate('/finetuning')}
+            >
+              <div className="feature-content">
+                <div className="feature-icon">
+                  <BugOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
+                </div>
+                <Title level={4} className="feature-title">安全性提升</Title>
+                <Paragraph>
+                  通过对抗训练提升模型在实际部署中的安全性，确保模型在恶意攻击下的稳定性。
+                </Paragraph>
+              </div>
             </Card>
           </Col>
           <Col xs={24} md={8}>
-            <Card style={{ textAlign: 'center', height: '100%' }}>
-              <BarChartOutlined style={{ fontSize: '48px', color: '#fa8c16', marginBottom: '16px' }} />
-              <Title level={4}>学术研究平台</Title>
-              <Paragraph>
-                作为论文中方法的可复现实验平台，推动学术研究的发展和创新。
-              </Paragraph>
+            <Card 
+              className="core-feature-card" 
+              style={{ textAlign: 'center', height: '100%' }}
+              onClick={() => navigate('/batch-testing')}
+            >
+              <div className="feature-content">
+                <div className="feature-icon">
+                  <BarChartOutlined style={{ fontSize: '48px', color: '#fa8c16', marginBottom: '16px' }} />
+                </div>
+                <Title level={4} className="feature-title">学术研究平台</Title>
+                <Paragraph>
+                  作为论文中方法的可复现实验平台，推动学术研究的发展和创新。
+                </Paragraph>
+              </div>
             </Card>
           </Col>
         </Row>
