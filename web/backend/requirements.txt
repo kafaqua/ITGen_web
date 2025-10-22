@@ -1,0 +1,7 @@
+# 后端API服务依赖
+Flask==2.3.3
+Flask-CORS==4.0.0
+Flask-SocketIO==5.3.6
+requests==2.31.0
+python-socketio==5.9.0
+eventlet==0.33.3
