@@ -19,35 +19,35 @@ const Home: React.FC = () => {
     {
       icon: <RobotOutlined style={{ fontSize: '48px', color: '#1890ff' }} />,
       title: '模型接入接口',
-      description: '支持主流DCM（CodeBERT、GraphCodeBERT、CodeGPT等）的快速接入，提供标准化的预测接口和Docker容器支持。',
+      description: '支持主流DCM（CodeBERT、GraphCodeBERT、CodeGPT等）的快速接入，提供标准化的预测接口（API或Docker容器），确保模型集成和调用的便捷性。',
       action: () => navigate('/models'),
       actionText: '管理模型'
     },
     {
       icon: <BugOutlined style={{ fontSize: '48px', color: '#52c41a' }} />,
-      title: '对抗样本生成引擎',
-      description: '基于ITGen核心算法，支持用户自定义攻击预算，包括最大查询次数、时间限制等参数配置。',
+      title: '对抗样本生成引擎（ITGen核心）',
+      description: '基于ITGen核心算法，支持用户自定义攻击预算（最大查询次数、时间限制），生成高质量对抗样本，测试模型脆弱性。',
       action: () => navigate('/attack'),
       actionText: '开始攻击'
     },
     {
       icon: <BarChartOutlined style={{ fontSize: '48px', color: '#fa8c16' }} />,
       title: '鲁棒性评估报告',
-      description: '输出攻击成功率（ASR）、平均模型调用次数（AMI）、平均运行时间（ART）等关键指标。',
+      description: '输出攻击成功率（ASR）、平均模型调用次数（AMI）、平均运行时间（ART），可视化对抗样本与原样本的差异对比。',
       action: () => navigate('/evaluation'),
       actionText: '查看报告'
     },
     {
       icon: <SettingOutlined style={{ fontSize: '48px', color: '#eb2f96' }} />,
       title: '对抗性微调模块',
-      description: '使用生成的对抗样本对原模型进行微调，提升模型鲁棒性，提供微调前后性能对比。',
+      description: '使用生成的对抗样本对原模型进行微调，提升模型鲁棒性，提供微调前后的性能对比（准确率/BLEU分数）。',
       action: () => navigate('/finetuning'),
       actionText: '开始微调'
     },
     {
       icon: <ExperimentOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
-      title: '批量测试与对比',
-      description: '支持多个模型、多个任务的批量测试，与基线方法（ALERT、BeamAttack）自动对比。',
+      title: '批量测试与对比分析',
+      description: '支持多个模型、多个任务（漏洞检测、克隆检测、代码摘要）的批量测试，与基线方法（ALERT、BeamAttack）自动对比。',
       action: () => navigate('/batch-testing'),
       actionText: '批量测试'
     }

@@ -70,7 +70,10 @@ const Sidebar: React.FC = () => {
       }}>
         <SafetyOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
         <div style={{ marginTop: '8px', fontWeight: 'bold', color: '#1890ff' }}>
-          代码模型鲁棒性平台
+            深度代码模型
+        </div>
+        <div style={{ marginTop: '8px', fontWeight: 'bold', color: '#1890ff' }}>
+            鲁棒性评估与增强平台
         </div>
       </div>
       <Menu
