@@ -34,7 +34,7 @@ echo ========================================
 echo 所有服务已启动！
 echo ========================================
 echo.
-echo 前端应用: http://localhost:3000
+echo 前端应用: http://localhost:5173
 echo 后端API: http://localhost:5000
 echo 算法服务: http://localhost:8000
 echo.
