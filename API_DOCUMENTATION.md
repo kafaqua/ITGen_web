@@ -1,10 +1,8 @@
 # 深度代码模型鲁棒性评估与增强平台 - API接口文档
 
-## 📋 概述
-
 本文档详细描述了深度代码模型鲁棒性评估与增强平台的API接口，包括后端API服务、算法服务以及ITGen算法接口。
 
-## 🏗️ 系统架构
+## 系统架构
 
 ```
 前端 (React + TypeScript) 
@@ -16,7 +14,7 @@
 ITGen算法模块 (Python)
 ```
 
-## 🔧 服务配置
+## 服务配置
 
 ### 端口配置
 - **前端服务**: `http://localhost:5173`
@@ -32,7 +30,7 @@ ALGORITHM_SERVICE_URL=http://localhost:8000
 REACT_APP_API_URL=http://localhost:5000
 ```
 
-## 📡 后端API服务接口
+## 后端API服务接口
 
 ### 基础信息
 - **服务地址**: `http://localhost:5000`
@@ -301,7 +299,7 @@ GET /api/health
 }
 ```
 
-## 🔬 算法服务接口
+## 算法服务接口
 
 ### 基础信息
 - **服务地址**: `http://localhost:8000`
@@ -455,7 +453,7 @@ GET /api/health
 }
 ```
 
-## 🧬 ITGen算法接口
+## ITGen算法接口
 
 ### 基础信息
 - **调用方式**: 子进程调用
@@ -557,7 +555,7 @@ python run_eval.py --input input.json --output output.json
 }
 ```
 
-## 🔄 WebSocket接口
+## WebSocket接口
 
 ### 连接信息
 - **地址**: `ws://localhost:5000`
@@ -603,7 +601,7 @@ socket.on('task_update', (data) => {
 - `task_completed`: 任务完成
 - `task_failed`: 任务失败
 
-## 📊 数据模型
+## 数据模型
 
 ### 1. 模型信息
 ```typescript
@@ -674,7 +672,7 @@ interface FinetuningResult {
 }
 ```
 
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 启动服务
 
@@ -727,7 +725,7 @@ curl -X POST http://localhost:5000/api/attack/start \
   }'
 ```
 
-## 🔧 错误处理
+##  错误处理
 
 ### 常见错误码
 - `400`: 请求参数错误
@@ -744,7 +742,7 @@ curl -X POST http://localhost:5000/api/attack/start \
 }
 ```
 
-## 📝 注意事项
+## 注意事项
 
 1. **超时设置**: 攻击任务默认超时300秒，评估任务默认超时600秒
 2. **文件大小**: 上传文件大小限制为100MB
