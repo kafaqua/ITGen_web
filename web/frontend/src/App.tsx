@@ -9,6 +9,7 @@ import Attack from './pages/Attack';
 import AttackResult from './pages/AttackResult';
 import Evaluation from './pages/Evaluation';
 import Finetuning from './pages/Finetuning';
+import FinetuningResult from './pages/FinetuningResult';
 import BatchTesting from './pages/BatchTesting';
 import './App.css';
 
@@ -28,6 +29,7 @@ const App: React.FC = () => {
             <Route path="/attack/result" element={<AttackResult />} />
             <Route path="/evaluation" element={<Evaluation />} />
             <Route path="/finetuning" element={<Finetuning />} />
+            <Route path="/finetuning/result" element={<FinetuningResult />} />
             <Route path="/batch-testing" element={<BatchTesting />} />
           </Routes>
         </Content>

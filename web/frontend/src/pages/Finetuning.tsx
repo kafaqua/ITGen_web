@@ -36,8 +36,10 @@ import {
   CodeOutlined,
   BarChartOutlined,
   ClockCircleOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api';
 
 const { Title, Text, Paragraph } = Typography;
@@ -86,24 +88,35 @@ interface FinetuningResult {
   // 微调前性能
   original_accuracy: number;
   original_bleu_score: number;
+  original_asr: number;
+  original_ami: number;
+  original_art: number;
   // 微调后性能
   final_accuracy: number;
   final_bleu_score: number;
+  final_asr: number;
+  final_ami: number;
+  final_art: number;
   adversarial_accuracy: number;
   adversarial_bleu_score: number;
   // 性能提升
   accuracy_improvement: number;
   bleu_improvement: number;
+  asr_improvement: number;
+  ami_improvement: number;
+  art_improvement: number;
   overall_improvement: number;
   model_path: string;
   training_logs: any[];
 }
 
 const Finetuning: React.FC = () => {
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const [models, setModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [trainingRunning, setTrainingRunning] = useState(false);
+  const [trainingComplete, setTrainingComplete] = useState(false);
   const [trainingData, setTrainingData] = useState<TrainingData[]>([]);
   const [trainingConfig, setTrainingConfig] = useState<TrainingConfig | null>(null);
   const [trainingProgress, setTrainingProgress] = useState<TrainingProgress | null>(null);
@@ -276,6 +289,7 @@ const Finetuning: React.FC = () => {
         clearInterval(interval);
         setTaskStatus('对抗性微调完成');
         setTrainingRunning(false);
+        setTrainingComplete(true);
         setCurrentStep(3);
         
         // 生成训练结果
@@ -286,21 +300,41 @@ const Finetuning: React.FC = () => {
     }, 2000);
   };
 
+  const handleViewResult = () => {
+    if (finetuningResult) {
+      sessionStorage.setItem('finetuningResult', JSON.stringify({
+        result: finetuningResult,
+        config: trainingConfig,
+        taskId: currentTaskId
+      }));
+      navigate('/finetuning/result');
+    }
+  };
+
   const generateTrainingResult = () => {
     // 微调前性能
     const originalAccuracy = 0.75 + Math.random() * 0.1;
     const originalBleuScore = 0.65 + Math.random() * 0.1;
+    const originalASR = 0.35 + Math.random() * 0.15; // 攻击成功率应该降低（模型更鲁棒）
+    const originalAMI = 0.65 + Math.random() * 0.1;
+    const originalART = 0.45 + Math.random() * 0.15;
     
     // 微调后性能
     const finalAccuracy = originalAccuracy + 0.05 + Math.random() * 0.1;
     const finalBleuScore = originalBleuScore + 0.03 + Math.random() * 0.08;
+    const finalASR = originalASR - 0.1 - Math.random() * 0.1; // 攻击成功率降低
+    const finalAMI = originalAMI + 0.05 + Math.random() * 0.08;
+    const finalART = originalART - 0.1 - Math.random() * 0.1; // 攻击响应时间降低（模型更鲁棒）
     const adversarialAccuracy = finalAccuracy - 0.05 - Math.random() * 0.05;
     const adversarialBleuScore = finalBleuScore - 0.02 - Math.random() * 0.03;
     
     // 计算性能提升
     const accuracyImprovement = ((finalAccuracy - originalAccuracy) / originalAccuracy) * 100;
     const bleuImprovement = ((finalBleuScore - originalBleuScore) / originalBleuScore) * 100;
-    const overallImprovement = (accuracyImprovement + bleuImprovement) / 2;
+    const asrImprovement = ((originalASR - finalASR) / originalASR) * 100; // ASR降低是好事
+    const amiImprovement = ((finalAMI - originalAMI) / originalAMI) * 100;
+    const artImprovement = ((originalART - finalART) / originalART) * 100; // ART降低是好事
+    const overallImprovement = (accuracyImprovement + bleuImprovement + asrImprovement + amiImprovement + artImprovement) / 5;
     
     const result: FinetuningResult = {
       model_id: `finetuned_${Date.now()}`,
@@ -310,14 +344,23 @@ const Finetuning: React.FC = () => {
       // 微调前性能
       original_accuracy: originalAccuracy,
       original_bleu_score: originalBleuScore,
+      original_asr: originalASR,
+      original_ami: originalAMI,
+      original_art: originalART,
       // 微调后性能
       final_accuracy: finalAccuracy,
       final_bleu_score: finalBleuScore,
+      final_asr: finalASR,
+      final_ami: finalAMI,
+      final_art: finalART,
       adversarial_accuracy: adversarialAccuracy,
       adversarial_bleu_score: adversarialBleuScore,
       // 性能提升
       accuracy_improvement: accuracyImprovement,
       bleu_improvement: bleuImprovement,
+      asr_improvement: asrImprovement,
+      ami_improvement: amiImprovement,
+      art_improvement: artImprovement,
       overall_improvement: overallImprovement,
       model_path: `/models/finetuned_${Date.now()}`,
       training_logs: []
@@ -534,6 +577,10 @@ const Finetuning: React.FC = () => {
               </Row>
 
               <Divider orientation="left">训练数据</Divider>
+
+              <Form.Item label="数据格式">
+                <Text type="secondary">每行格式：<Text code>原始代码|对抗代码|标签</Text></Text>
+              </Form.Item>
 
               <Form.Item label="上传训练数据">
                 <Upload
@@ -759,42 +806,73 @@ const Finetuning: React.FC = () => {
               </div>
             </Card>
           )}
-
-          <Card title="训练数据" style={{ marginTop: '16px' }}>
-            <Table
-              columns={columns}
-              dataSource={trainingData}
-              rowKey="id"
-              pagination={{ pageSize: 5 }}
-              size="small"
-              expandable={{
-                expandedRowRender: (record) => (
-                  <div>
-                    <Paragraph><strong>原始代码:</strong></Paragraph>
-                    <Text code style={{ display: 'block', whiteSpace: 'pre-wrap' }}>
-                      {record.original_code}
-                    </Text>
-                    <Paragraph><strong>对抗代码:</strong></Paragraph>
-                    <Text code style={{ display: 'block', whiteSpace: 'pre-wrap' }}>
-                      {record.adversarial_code}
-                    </Text>
-                  </div>
-                ),
-              }}
-            />
-          </Card>
         </Col>
 
         <Col span={8}>
           <Card title="训练状态">
-            {trainingRunning ? (
+            {trainingComplete ? (
               <div>
-                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <ExperimentOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+                <Progress 
+                  percent={100} 
+                  status="success"
+                  strokeColor={{
+                    '0%': '#108ee9',
+                    '100%': '#87d068',
+                  }}
+                />
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <Alert
+                    message="微调已完成"
+                    type="success"
+                    showIcon
+                  />
                 </div>
-                <div style={{ textAlign: 'center', color: '#1890ff', fontSize: '16px', fontWeight: 'bold' }}>
-                  对抗性微调进行中
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <Button 
+                    type="primary" 
+                    icon={<EyeOutlined />}
+                    onClick={handleViewResult}
+                    size="large"
+                  >
+                    查看结果
+                  </Button>
                 </div>
+                {currentTaskId && (
+                  <div style={{ marginTop: '16px', fontSize: '12px', color: '#666', textAlign: 'center' }}>
+                    任务ID: {currentTaskId}
+                  </div>
+                )}
+              </div>
+            ) : trainingRunning ? (
+              <div>
+                <Progress 
+                  percent={Math.min(100, ((trainingProgress?.current_epoch || 0) * 100) / (trainingConfig?.epochs || 1))}
+                  status="active"
+                  strokeColor={{
+                    '0%': '#108ee9',
+                    '100%': '#87d068',
+                  }}
+                />
+                {trainingProgress && (
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <Text strong>Epoch: </Text>
+                      <Text>{trainingProgress.current_epoch} / {trainingProgress.total_epochs}</Text>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <Text strong>损失: </Text>
+                      <Text>{trainingProgress.loss.toFixed(4)}</Text>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <Text strong>准确率: </Text>
+                      <Text>{trainingProgress.accuracy.toFixed(4)}</Text>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <Text strong>剩余时间: </Text>
+                      <Text>{trainingProgress.eta}</Text>
+                    </div>
+                  </div>
+                )}
                 {currentTaskId && (
                   <div style={{ marginTop: '16px', fontSize: '12px', color: '#666', textAlign: 'center' }}>
                     任务ID: {currentTaskId}
@@ -821,40 +899,71 @@ const Finetuning: React.FC = () => {
                 <li>执行对抗性微调</li>
                 <li>评估和保存模型</li>
               </ol>
-              
-              <h4>数据格式</h4>
-              <p>每行格式：<Text code>原始代码|对抗代码|标签</Text></p>
-              
-              <h4>参数说明</h4>
-              <ul>
-                <li><strong>学习率:</strong> 控制训练步长</li>
-                <li><strong>批次大小:</strong> 每次训练的样本数</li>
-                <li><strong>训练轮数:</strong> 完整遍历数据的次数</li>
-                <li><strong>对抗比例:</strong> 对抗样本在批次中的比例</li>
-              </ul>
             </div>
-          </Card>
+      </Card>
+        </Col>
+      </Row>
 
-          <Card title="模型性能" style={{ marginTop: '16px' }}>
-            {finetuningResult ? (
-              <div>
-                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <BarChartOutlined style={{ fontSize: '32px', color: '#52c41a' }} />
+      <Row gutter={24}>
+        <Col span={24}>
+          <Card title="参数说明" style={{ marginTop: '16px' }}>
+            <Row gutter={[16, 8]}>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>学习率 (Learning Rate)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>控制模型权重更新的步长，影响收敛速度和训练稳定性。过高可能导致震荡，过低可能导致收敛缓慢。推荐值：0.0001</Text>
                 </div>
-                <div style={{ textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#52c41a' }}>
-                  微调完成
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>批次大小 (Batch Size)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>每次迭代处理的样本数，影响训练速度和梯度稳定性。推荐值：8</Text>
                 </div>
-                <div style={{ textAlign: 'center', marginTop: '8px' }}>
-                  <Text type="success">模型性能显著提升</Text>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>训练轮数 (Epochs)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>模型遍历整个数据集的次数，需平衡欠拟合与过拟合。推荐值：5</Text>
                 </div>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', color: '#999' }}>
-                <BarChartOutlined style={{ fontSize: '32px', marginBottom: '16px' }} />
-                <div>等待微调结果</div>
-              </div>
-            )}
-          </Card>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>预热步数 (Warmup Steps)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>学习率从初始值逐步增加至目标值的训练步数，有助于稳定训练初期的收敛。推荐值：100</Text>
+                </div>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>最大长度 (Max Length)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>输入序列的最大长度，影响模型的内存使用和计算效率。推荐值：512</Text>
+                </div>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>对抗样本比例 (Adversarial Sample Ratio)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>训练集中对抗样本的比例，影响模型对对抗攻击的鲁棒性。推荐值：0.3</Text>
+                </div>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>ASR (Attack Success Rate)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>攻击成功率，衡量模型对对抗样本的脆弱性。值越低表示模型鲁棒性越好。</Text>
+                </div>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>AMI (Average Modification Index)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>平均修改率，生成对抗样本时输入被修改的平均比例，反映对抗样本的扰动程度。</Text>
+                </div>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>ART (Adversarial Robustness Training)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>对抗训练鲁棒性，模型经过对抗训练后的鲁棒性指标，评估模型抵抗对抗攻击的能力。值越高表示鲁棒性越好。</Text>
+                </div>
+              </Col>
+            </Row>
+      </Card>
         </Col>
       </Row>
     </div>

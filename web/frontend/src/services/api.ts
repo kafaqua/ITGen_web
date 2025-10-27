@@ -108,6 +108,18 @@ class ApiService {
     return response.data;
   }
 
+  async getFinetuningResults(taskId: string) {
+    const response = await this.api.get(`/api/finetuning/results/${taskId}`);
+    return response.data;
+  }
+
+  async downloadModel(modelId: string) {
+    const response = await this.api.get(`/api/models/${modelId}/download`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+
   // 批量测试API
   async startBatchTesting(batchData: any) {
     const response = await this.api.post('/api/batch-testing/start', batchData);
@@ -153,6 +165,26 @@ class ApiService {
   async healthCheck() {
     const response = await this.api.get('/api/health');
     return response.data;
+  }
+
+  // 模型下载API
+  async downloadModelFile(modelPath: string, fileName: string) {
+    const response = await this.api.get(`/api/models/download`, {
+      params: { path: modelPath },
+      responseType: 'blob'
+    });
+    
+    // 创建下载链接
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    return { success: true };
   }
 }
 
