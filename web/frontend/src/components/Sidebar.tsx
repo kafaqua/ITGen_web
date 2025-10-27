@@ -34,14 +34,14 @@ const Sidebar: React.FC = () => {
       label: '对抗攻击',
     },
     {
-      key: '/finetuning',
-      icon: <SettingOutlined />,
-      label: '对抗性微调',
-    },
-    {
       key: '/batch-testing',
       icon: <ExperimentOutlined />,
       label: '批量对抗样本生成',
+    },
+    {
+      key: '/finetuning',
+      icon: <SettingOutlined />,
+      label: '对抗性微调',
     },
     {
       key: '/evaluation',

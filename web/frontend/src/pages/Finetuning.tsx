@@ -962,6 +962,24 @@ const Finetuning: React.FC = () => {
                   <Text style={{ color: '#000' }}>对抗训练鲁棒性，模型经过对抗训练后的鲁棒性指标，评估模型抵抗对抗攻击的能力。值越高表示鲁棒性越好。</Text>
                 </div>
               </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>准确率 (Accuracy)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>模型正确预测的样本数占总样本数的比例，衡量模型的整体预测准确性。值越高表示模型性能越好。</Text>
+                </div>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>BLEU分数 (BLEU Score)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>评估模型生成代码质量的标准指标，通过对比生成代码与参考代码的n-gram重叠度来衡量。值越高表示生成质量越好。</Text>
+                </div>
+              </Col>
+              <Col span={8}>
+                <Text strong style={{ fontSize: '16px' }}>整体提升 (Overall Improvement)</Text>
+                <div style={{ marginTop: '4px', color: '#000' }}>
+                  <Text style={{ color: '#000' }}>综合多个性能指标（准确率、BLEU、ASR、AMI、ART）的提升程度，全面反映模型微调后的改进效果。值越高表示整体性能提升越明显。</Text>
+                </div>
+              </Col>
             </Row>
       </Card>
         </Col>

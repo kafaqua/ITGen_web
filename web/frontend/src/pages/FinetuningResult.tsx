@@ -227,7 +227,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.original_accuracy} 
                   precision={2}
                   suffix="%"
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 />
               </Col>
               <Col span={12}>
@@ -235,7 +234,6 @@ const FinetuningResult: React.FC = () => {
                   title="BLEU分数" 
                   value={result.original_bleu_score} 
                   precision={2}
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 />
               </Col>
               <Col span={8}>
@@ -244,7 +242,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.original_asr} 
                   precision={2}
                   suffix="%"
-                  prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                 />
               </Col>
               <Col span={8}>
@@ -253,7 +250,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.original_ami} 
                   precision={2}
                   suffix="%"
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 />
               </Col>
               <Col span={8}>
@@ -262,7 +258,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.original_art} 
                   precision={2}
                   suffix="%"
-                  prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                 />
               </Col>
             </Row>
@@ -278,7 +273,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.final_accuracy} 
                   precision={2}
                   suffix="%"
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 />
               </Col>
               <Col span={12}>
@@ -286,7 +280,6 @@ const FinetuningResult: React.FC = () => {
                   title="BLEU分数" 
                   value={result.final_bleu_score} 
                   precision={2}
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 />
               </Col>
               <Col span={8}>
@@ -295,7 +288,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.final_asr} 
                   precision={2}
                   suffix="%"
-                  prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                 />
               </Col>
               <Col span={8}>
@@ -304,7 +296,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.final_ami} 
                   precision={2}
                   suffix="%"
-                  prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                 />
               </Col>
               <Col span={8}>
@@ -313,7 +304,6 @@ const FinetuningResult: React.FC = () => {
                   value={result.final_art} 
                   precision={2}
                   suffix="%"
-                  prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
                 />
               </Col>
             </Row>
@@ -346,11 +336,9 @@ const FinetuningResult: React.FC = () => {
                       size="small"
                     />
                   </Col>
-                  <Col span={8}>
-                    <Text type="secondary">微调后: {metric.final.toFixed(3)}{metric.unit}</Text>
-                  </Col>
+                  <Col span={8}></Col>
                 </Row>
-                <Row gutter={16} style={{ marginTop: '4px' }}>
+                <Row gutter={16} align="middle" style={{ marginTop: '4px' }}>
                   <Col span={8}></Col>
                   <Col span={8}>
                     <Progress 
@@ -359,6 +347,9 @@ const FinetuningResult: React.FC = () => {
                       strokeColor="#52c41a"
                       size="small"
                     />
+                  </Col>
+                  <Col span={8}>
+                    <Text type="secondary">微调后: {metric.final.toFixed(3)}{metric.unit}</Text>
                   </Col>
                 </Row>
               </div>
@@ -378,7 +369,6 @@ const FinetuningResult: React.FC = () => {
                   precision={2}
                   suffix="%"
                   valueStyle={{ color: '#3f8600' }}
-                  prefix={<CheckCircleOutlined />}
                 />
               </Col>
               <Col span={8}>
@@ -388,7 +378,6 @@ const FinetuningResult: React.FC = () => {
                   precision={2}
                   suffix="%"
                   valueStyle={{ color: '#3f8600' }}
-                  prefix={<CheckCircleOutlined />}
                 />
               </Col>
               <Col span={8}>
@@ -398,7 +387,6 @@ const FinetuningResult: React.FC = () => {
                   precision={2}
                   suffix="%"
                   valueStyle={{ color: '#3f8600' }}
-                  prefix={<CheckCircleOutlined />}
                 />
               </Col>
               <Col span={8}>
@@ -408,7 +396,6 @@ const FinetuningResult: React.FC = () => {
                   precision={2}
                   suffix="%"
                   valueStyle={{ color: '#3f8600' }}
-                  prefix={<CheckCircleOutlined />}
                 />
               </Col>
               <Col span={8}>
@@ -418,7 +405,6 @@ const FinetuningResult: React.FC = () => {
                   precision={2}
                   suffix="%"
                   valueStyle={{ color: '#3f8600' }}
-                  prefix={<CheckCircleOutlined />}
                 />
               </Col>
               <Col span={8}>
