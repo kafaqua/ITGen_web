@@ -34,11 +34,6 @@ const Sidebar: React.FC = () => {
       label: '对抗攻击',
     },
     {
-      key: '/evaluation',
-      icon: <BarChartOutlined />,
-      label: '鲁棒性评估',
-    },
-    {
       key: '/finetuning',
       icon: <SettingOutlined />,
       label: '对抗性微调',
@@ -46,7 +41,12 @@ const Sidebar: React.FC = () => {
     {
       key: '/batch-testing',
       icon: <ExperimentOutlined />,
-      label: '批量测试',
+      label: '批量对抗样本生成',
+    },
+    {
+      key: '/evaluation',
+      icon: <BarChartOutlined />,
+      label: '鲁棒性评估',
     },
   ];
 

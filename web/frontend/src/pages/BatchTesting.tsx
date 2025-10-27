@@ -108,7 +108,7 @@ const BatchTesting: React.FC = () => {
     const { file } = info;
     if (file.status === 'done') {
       setUploadedFile(file);
-      message.success(`${file.name} 文件上传成功`);
+      message.success(`${file.name} 数据集上传成功`);
       
       // 解析上传的文件
       const reader = new FileReader();
@@ -125,7 +125,7 @@ const BatchTesting: React.FC = () => {
           }));
           setTestCases(cases);
         } catch (error) {
-          message.error('文件解析失败');
+          message.error('数据集解析失败');
         }
       };
       reader.readAsText(file.originFileObj);
@@ -134,7 +134,7 @@ const BatchTesting: React.FC = () => {
 
   const handleStartBatchTest = async (values: any) => {
     if (testCases.length === 0) {
-      message.warning('请先上传测试用例文件');
+      message.warning('请先上传数据集');
       return;
     }
 
@@ -150,19 +150,19 @@ const BatchTesting: React.FC = () => {
       if (response.success) {
         const taskId = response.task_id;
         setCurrentTaskId(taskId);
-        setTaskStatus('批量测试已启动');
+        setTaskStatus('批量对抗样本生成已启动');
         setTaskProgress(10);
         
-        message.success('批量测试已启动');
+        message.success('批量对抗样本生成已启动');
         
         // 模拟进度更新
         simulateProgress(taskId);
       } else {
-        message.error(response.error || '批量测试启动失败');
+        message.error(response.error || '批量对抗样本生成启动失败');
         setTestRunning(false);
       }
     } catch (error) {
-      message.error('批量测试启动失败');
+      message.error('批量对抗样本生成启动失败');
       console.error('Error starting batch test:', error);
       setTestRunning(false);
     } finally {
@@ -176,7 +176,7 @@ const BatchTesting: React.FC = () => {
       progress += Math.random() * 15;
       if (progress >= 100) {
         progress = 100;
-        setTaskStatus('批量测试完成');
+        setTaskStatus('批量对抗样本生成完成');
         setTestRunning(false);
         clearInterval(interval);
         
@@ -186,7 +186,7 @@ const BatchTesting: React.FC = () => {
         }, 1000);
       } else {
         setTaskProgress(Math.min(progress, 95));
-        setTaskStatus(`批量测试进行中... ${Math.round(progress)}%`);
+        setTaskStatus(`批量对抗样本生成进行中... ${Math.round(progress)}%`);
       }
     }, 2000);
   };
@@ -248,7 +248,7 @@ const BatchTesting: React.FC = () => {
     };
     
     setTestResults(results);
-    message.success('批量测试结果已生成');
+    message.success('批量对抗样本已生成');
   };
 
   const handleStopTest = () => {
@@ -256,7 +256,7 @@ const BatchTesting: React.FC = () => {
     setTaskProgress(0);
     setTaskStatus('');
     setCurrentTaskId(null);
-    message.info('批量测试已停止');
+    message.info('批量对抗样本生成已停止');
   };
 
   const downloadResults = () => {
@@ -335,7 +335,7 @@ const BatchTesting: React.FC = () => {
   return (
     <div>
       <Title level={2} style={{ marginBottom: '24px' }}>
-        批量测试
+        批量对抗样本生成
       </Title>
 
       <Row gutter={24}>
@@ -350,10 +350,10 @@ const BatchTesting: React.FC = () => {
                 <Col span={12}>
                   <Form.Item
                     name="model_id"
-                    label="目标模型"
-                    rules={[{ required: true, message: '请选择目标模型' }]}
+                    label="测试模型"
+                    rules={[{ required: true, message: '请选择测试模型' }]}
                   >
-                    <Select placeholder="请选择目标模型">
+                    <Select placeholder="请选择测试模型">
                       {models.map(model => (
                         <Option key={model.id} value={model.id}>
                           {model.name}
@@ -404,9 +404,9 @@ const BatchTesting: React.FC = () => {
                 </Col>
               </Row>
 
-              <Divider orientation="left">测试用例文件</Divider>
+              <Divider orientation="left">数据集</Divider>
 
-              <Form.Item label="上传测试用例">
+              <Form.Item label="上传数据集">
                 <Upload
                   accept=".txt,.csv,.json"
                   beforeUpload={() => false}
@@ -414,7 +414,7 @@ const BatchTesting: React.FC = () => {
                   showUploadList={false}
                 >
                   <Button icon={<UploadOutlined />}>
-                    选择文件
+                    选择数据集
                   </Button>
                 </Upload>
                 {uploadedFile && (
@@ -439,7 +439,7 @@ const BatchTesting: React.FC = () => {
                     icon={<PlayCircleOutlined />}
                     size="large"
                   >
-                    开始批量测试
+                    开始批量对抗样本生成
                   </Button>
                   {testRunning && (
                     <Button 
@@ -457,10 +457,10 @@ const BatchTesting: React.FC = () => {
           </Card>
 
           {testResults && (
-            <Card title="测试结果" style={{ marginTop: '16px' }}>
+            <Card title="生成结果" style={{ marginTop: '16px' }}>
               <Row gutter={16} style={{ marginBottom: '16px' }}>
                 <Col span={6}>
-                  <Statistic title="总测试数" value={testResults.total} />
+                  <Statistic title="总生成数" value={testResults.total} />
                 </Col>
                 <Col span={6}>
                   <Statistic 
@@ -508,7 +508,7 @@ const BatchTesting: React.FC = () => {
         </Col>
 
         <Col span={8}>
-          <Card title="测试状态">
+          <Card title="生成状态">
             {testRunning ? (
               <div>
                 <Progress 
@@ -535,7 +535,7 @@ const BatchTesting: React.FC = () => {
             ) : (
               <div style={{ textAlign: 'center', color: '#999' }}>
                 <PlayCircleOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-                <div>暂无运行中的测试任务</div>
+                <div>暂无运行中的生成任务</div>
               </div>
             )}
           </Card>
@@ -549,13 +549,13 @@ const BatchTesting: React.FC = () => {
                 <li><Text code>.json</Text> - JSON格式，包含测试用例数组</li>
               </ul>
               
-              <h4>测试流程</h4>
+              <h4>生成流程</h4>
               <ol>
-                <li>选择目标模型和测试类型</li>
-                <li>上传包含测试用例的文件</li>
+                <li>选择测试模型和测试类型</li>
+                <li>上传包含测试用例的数据集</li>
                 <li>配置并发数量和其他参数</li>
-                <li>开始批量测试</li>
-                <li>查看测试结果和下载报告</li>
+                <li>开始批量对抗样本生成</li>
+                <li>查看生成结果和下载报告</li>
               </ol>
             </div>
           </Card>

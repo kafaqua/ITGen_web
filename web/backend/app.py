@@ -129,14 +129,32 @@ class TaskManager:
     def _get_mock_result(self, task_type: str, task_data: Dict[str, Any], task_id: str) -> Dict[str, Any]:
         """获取模拟结果（当算法服务不可用时）"""
         if task_type == 'attack':
+            original_code = task_data.get('code_data', {}).get('code1', 'def test_function():\n    return "hello"')
+            attack_strategy = task_data.get('parameters', {}).get('attack_strategy', 'identifier_rename')
+            
+            # 根据攻击手段生成不同的对抗代码
+            if attack_strategy == 'identifier_rename':
+                adversarial_code = original_code.replace('function', 'func').replace('variable', 'var')
+                replaced_words = {'function': 'func', 'variable': 'var'}
+            elif attack_strategy == 'equivalent_transform':
+                adversarial_code = original_code  # 等价变换保持不变
+                replaced_words = {}
+            elif attack_strategy == 'both':
+                adversarial_code = original_code.replace('function', 'func').replace('variable', 'var')
+                replaced_words = {'function': 'func', 'variable': 'var'}
+            else:
+                adversarial_code = original_code.replace('function', 'func')
+                replaced_words = {'function': 'func'}
+            
             return {
                 'success': True,
-                'original_code': task_data.get('code_data', {}).get('code1', 'def test_function():\n    return "hello"'),
-                'adversarial_code': task_data.get('code_data', {}).get('code1', 'def test_function():\n    return "hello"').replace('function', 'func'),
-                'replaced_words': {'function': 'func'},
+                'original_code': original_code,
+                'adversarial_code': adversarial_code,
+                'replaced_words': replaced_words,
                 'query_times': 150,
                 'time_cost': 45.2,
                 'method': 'itgen',
+                'attack_strategy': attack_strategy,
                 'task_id': task_id,
                 'note': '算法服务不可用，使用模拟结果'
             }

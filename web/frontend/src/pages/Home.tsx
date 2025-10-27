@@ -46,10 +46,10 @@ const Home: React.FC = () => {
     },
     {
       icon: <ExperimentOutlined style={{ fontSize: '48px', color: '#722ed1' }} />,
-      title: '批量测试与对比分析',
+      title: '批量样本生成与对比分析',
       description: '支持多个模型、多个任务（漏洞检测、克隆检测、代码摘要）的批量测试，与基线方法（ALERT、BeamAttack）自动对比。',
       action: () => navigate('/batch-testing'),
-      actionText: '批量测试'
+      actionText: '批量对抗样本生成'
     }
   ];
 

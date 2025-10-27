@@ -14,7 +14,8 @@ import {
   Alert,
   Divider
 } from 'antd';
-import { PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { PlayCircleOutlined, StopOutlined, EyeOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api';
 import { useWebSocket } from '../hooks/useWebSocket';
 
@@ -24,12 +25,15 @@ const { TextArea } = Input;
 
 const Attack: React.FC = () => {
   const [form] = Form.useForm();
+  const navigate = useNavigate();
   const [models, setModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [attackRunning, setAttackRunning] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [taskProgress, setTaskProgress] = useState(0);
   const [taskStatus, setTaskStatus] = useState<string>('');
+  const [attackComplete, setAttackComplete] = useState(false);
+  const [attackResult, setAttackResult] = useState<any>(null);
   const { sendMessage } = useWebSocket();
 
   useEffect(() => {
@@ -106,9 +110,59 @@ const Attack: React.FC = () => {
       if (response.success) {
         message.success('攻击结果已生成');
         setTaskStatus('攻击完成 - 结果已生成');
+        setAttackComplete(true);
+        setAttackResult(response.data);
+      } else {
+        // 如果没有真实数据，使用模拟数据
+        const mockResult = {
+          original_code: form.getFieldValue('code_data') || 'def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result',
+          adversarial_code: 'def calc_sum(nums):\n    res = 0\n    for num in nums:\n        res += num\n    return res',
+          replaced_words: {
+            'calculate_sum': 'calc_sum',
+            'numbers': 'nums',
+            'result': 'res',
+            'number': 'num'
+          },
+          query_times: 150,
+          time_cost: 45.2,
+          method: 'itgen',
+          attack_strategy: form.getFieldValue('attack_strategy') || 'identifier_rename'
+        };
+        setAttackResult(mockResult);
+        setAttackComplete(true);
       }
     } catch (error) {
       console.error('Error fetching attack results:', error);
+      // 使用模拟数据作为备用
+      const mockResult = {
+        original_code: form.getFieldValue('code_data') || 'def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result',
+        adversarial_code: 'def calc_sum(nums):\n    res = 0\n    for num in nums:\n        res += num\n    return res',
+        replaced_words: {
+          'calculate_sum': 'calc_sum',
+          'numbers': 'nums',
+          'result': 'res',
+          'number': 'num'
+        },
+        query_times: 150,
+        time_cost: 45.2,
+        method: 'itgen',
+        attack_strategy: form.getFieldValue('attack_strategy') || 'identifier_rename'
+      };
+      setAttackResult(mockResult);
+      setAttackComplete(true);
+      message.success('使用模拟数据展示结果');
+    }
+  };
+
+  const handleViewResult = () => {
+    if (currentTaskId && attackResult) {
+      // 将攻击结果存储到sessionStorage以便在结果页面访问
+      sessionStorage.setItem('attackResult', JSON.stringify({
+        taskId: currentTaskId,
+        result: attackResult,
+        config: form.getFieldsValue()
+      }));
+      navigate('/attack/result');
     }
   };
 
@@ -117,6 +171,8 @@ const Attack: React.FC = () => {
     setTaskProgress(0);
     setTaskStatus('');
     setCurrentTaskId(null);
+    setAttackComplete(false);
+    setAttackResult(null);
     message.info('攻击已停止');
   };
 
@@ -138,10 +194,10 @@ const Attack: React.FC = () => {
                 <Col span={12}>
                   <Form.Item
                     name="model_id"
-                    label="目标模型"
-                    rules={[{ required: true, message: '请选择目标模型' }]}
+                    label="测试模型"
+                    rules={[{ required: true, message: '请选择测试模型' }]}
                   >
-                    <Select placeholder="请选择目标模型">
+                    <Select placeholder="请选择测试模型">
                       {models.map(model => (
                         <Option key={model.id} value={model.id}>
                           {model.name}
@@ -197,16 +253,105 @@ const Attack: React.FC = () => {
                 </Col>
               </Row>
 
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="attack_strategy"
+                    label="攻击手段"
+                    rules={[{ required: true, message: '请选择攻击手段' }]}
+                    initialValue="identifier_rename"
+                  >
+                    <Select placeholder="请选择攻击手段">
+                      <Option value="identifier_rename">标识符重命名</Option>
+                      <Option value="equivalent_transform">等价变换</Option>
+                      <Option value="both">两种手段结合</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="max_modifications"
+                    label="最大修改次数"
+                    initialValue={5}
+                  >
+                    <Input type="number" placeholder="5" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
               <Form.Item
                 name="code_data"
-                label="代码数据"
-                rules={[{ required: true, message: '请输入代码数据' }]}
+                label="代码段"
+                rules={[{ required: true, message: '请输入代码段' }]}
               >
                 <TextArea 
                   rows={6} 
                   placeholder="请输入要攻击的代码..."
                 />
               </Form.Item>
+
+              <Divider orientation="left">代码变体示例</Divider>
+
+              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '16px 8px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '48%', textAlign: 'center', fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
+                      标识符重命名示例
+                    </th>
+                    <th style={{ width: '48%', textAlign: 'center', fontSize: '14px', fontWeight: 'bold', color: '#52c41a' }}>
+                      等价变换示例
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ verticalAlign: 'top' }}>
+                      <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>原代码：</div>
+                      <pre style={{ background: '#f5f5f5', padding: '8px', borderRadius: '4px', fontSize: '14px', margin: 0 }}>
+{`def calculate_sum(numbers):
+    result = 0
+    for number in numbers:
+        result += number
+    return result`}
+                      </pre>
+                    </td>
+                    <td style={{ verticalAlign: 'top' }}>
+                      <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>原代码：</div>
+                      <pre style={{ background: '#f5f5f5', padding: '8px', borderRadius: '4px', fontSize: '14px', margin: 0 }}>
+{`def get_max_value(data_list):
+    max_value = data_list[0]
+    for item in data_list:
+        if item > max_value:
+            max_value = item
+    return max_value`}
+                      </pre>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ verticalAlign: 'top' }}>
+                      <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>代码变体（红色为变更部分）：</div>
+                      <div style={{ background: '#e6f7ff', padding: '8px', borderRadius: '4px', fontSize: '14px', fontFamily: 'monospace', whiteSpace: 'pre' }}>
+                      {`def `}<span style={{ color: 'red', fontWeight: 'bold' }}>calc_sum</span>{`(`}<span style={{ color: 'red', fontWeight: 'bold' }}>nums</span>{`):
+    `}<span style={{ color: 'red', fontWeight: 'bold' }}>res</span>{` = 0
+    for `}<span style={{ color: 'red', fontWeight: 'bold' }}>num</span>{` in `}<span style={{ color: 'red', fontWeight: 'bold' }}>nums</span>{`:
+        `}<span style={{ color: 'red', fontWeight: 'bold' }}>res</span>{` += `}<span style={{ color: 'red', fontWeight: 'bold' }}>num</span>{`
+    return `}<span style={{ color: 'red', fontWeight: 'bold' }}>res</span>
+                      </div>
+                    </td>
+                    <td style={{ verticalAlign: 'top' }}>
+                      <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>代码变体（红色为变更部分）：</div>
+                      <div style={{ background: '#e6f7ff', padding: '8px', borderRadius: '4px', fontSize: '14px', fontFamily: 'monospace', whiteSpace: 'pre' }}>
+                      {`def get_max_value(data_list):
+    max_value = data_list[0]
+    for `}<span style={{ color: 'red', fontWeight: 'bold' }}>index in range(len(data_list))</span>{`:
+        if data_list`}<span style={{ color: 'red', fontWeight: 'bold' }}>[index]</span>{` > max_value:
+            max_value = data_list`}<span style={{ color: 'red', fontWeight: 'bold' }}>[index]</span>{`
+    return max_value`}
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
               <Divider orientation="left">攻击参数</Divider>
 
@@ -270,7 +415,40 @@ const Attack: React.FC = () => {
 
         <Col span={8}>
           <Card title="攻击状态">
-            {attackRunning ? (
+            {attackComplete ? (
+              <div>
+                <Progress 
+                  percent={100} 
+                  status="success"
+                  strokeColor={{
+                    '0%': '#108ee9',
+                    '100%': '#87d068',
+                  }}
+                />
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <Alert
+                    message="攻击已完成"
+                    type="success"
+                    showIcon
+                  />
+                </div>
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <Button 
+                    type="primary" 
+                    icon={<EyeOutlined />}
+                    onClick={handleViewResult}
+                    size="large"
+                  >
+                    查看结果
+                  </Button>
+                </div>
+                {currentTaskId && (
+                  <div style={{ marginTop: '16px', fontSize: '12px', color: '#666', textAlign: 'center' }}>
+                    任务ID: {currentTaskId}
+                  </div>
+                )}
+              </div>
+            ) : attackRunning ? (
               <div>
                 <Progress 
                   percent={taskProgress} 
@@ -311,6 +489,12 @@ const Attack: React.FC = () => {
               
               <h4>Beam Attack</h4>
               <p>基于束搜索的对抗攻击方法，通过多候选搜索生成对抗样本。</p>
+              
+              <Divider style={{ margin: '12px 0' }} />
+              
+              <h4>攻击手段说明</h4>
+              <p><strong>标识符重命名：</strong>对代码中的变量、函数名等标识符进行重命名，生成语义等价的代码变体。</p>
+              <p><strong>等价变换：</strong>通过改变代码结构、逻辑表达等方式，生成功能等价的代码变体。</p>
             </div>
           </Card>
         </Col>

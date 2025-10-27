@@ -149,16 +149,80 @@ class ITGenAlgorithmCaller:
     def _get_mock_attack_result(self, code_data: Dict[str, Any], parameters: Dict[str, Any]) -> Dict[str, Any]:
         """获取模拟攻击结果"""
         original_code = code_data.get('code1', 'def test_function():\n    return "hello"')
+        attack_strategy = parameters.get('attack_strategy', 'identifier_rename')
+        
+        # 根据攻击手段生成不同的对抗代码
+        if attack_strategy == 'identifier_rename':
+            # 标识符重命名
+            adversarial_code = self._rename_identifiers(original_code)
+            replaced_words = self._get_renamed_identifiers(original_code, adversarial_code)
+        elif attack_strategy == 'equivalent_transform':
+            # 等价变换
+            adversarial_code = self._equivalent_transform(original_code)
+            replaced_words = {}
+        elif attack_strategy == 'both':
+            # 两种手段结合
+            adversarial_code = self._equivalent_transform(original_code)
+            adversarial_code = self._rename_identifiers(adversarial_code)
+            replaced_words = {}
+        else:
+            # 默认标识符重命名
+            adversarial_code = original_code.replace('function', 'func')
+            replaced_words = {'function': 'func'}
+        
         return {
             'success': True,
             'original_code': original_code,
-            'adversarial_code': original_code.replace('function', 'func'),
-            'replaced_words': {'function': 'func'},
+            'adversarial_code': adversarial_code,
+            'replaced_words': replaced_words,
             'query_times': 150,
             'time_cost': 45.2,
             'method': 'itgen',
+            'attack_strategy': attack_strategy,
             'note': 'ITGen算法不可用，使用模拟结果'
         }
+    
+    def _rename_identifiers(self, code: str) -> str:
+        """标识符重命名攻击"""
+        # 简单的标识符重命名示例
+        replacements = {
+            'function': 'func', 'variable': 'var', 'parameter': 'param',
+            'result': 'res', 'data': 'dt', 'value': 'val', 'test': 'tst',
+            'count': 'cnt', 'index': 'idx', 'length': 'len', 'string': 'str',
+            'number': 'num', 'array': 'arr', 'list': 'lst', 'object': 'obj'
+        }
+        result = code
+        for old, new in replacements.items():
+            result = result.replace(old, new)
+        return result
+    
+    def _get_renamed_identifiers(self, original: str, modified: str) -> Dict[str, str]:
+        """获取重命名的标识符映射"""
+        replacements = {
+            'function': 'func', 'variable': 'var', 'parameter': 'param',
+            'result': 'res', 'data': 'dt', 'value': 'val', 'test': 'tst',
+            'count': 'cnt', 'index': 'idx', 'length': 'len', 'string': 'str',
+            'number': 'num', 'array': 'arr', 'list': 'lst', 'object': 'obj'
+        }
+        replaced = {}
+        for old, new in replacements.items():
+            if old in original and new in modified:
+                replaced[old] = new
+        return replaced
+    
+    def _equivalent_transform(self, code: str) -> str:
+        """等价变换攻击"""
+        # 简单的等价变换示例
+        transformations = [
+            ('def ', 'def '),
+            ('return ', 'return '),
+            ('if ', 'if '),
+            ('else', 'else'),
+            # 可以添加更多等价变换规则
+        ]
+        result = code
+        # 这里可以添加更复杂的等价变换逻辑
+        return result
     
     def _get_mock_evaluation_result(self, evaluation_data: Dict[str, Any]) -> Dict[str, Any]:
         """获取模拟评估结果"""

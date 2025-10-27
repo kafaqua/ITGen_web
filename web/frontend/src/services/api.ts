@@ -76,6 +76,11 @@ class ApiService {
     return response.data;
   }
 
+  async startAttackWithConfig(config: any) {
+    const response = await this.api.post('/api/attack/start', config);
+    return response.data;
+  }
+
   // 评估报告API
   async startEvaluation(evaluationData: any) {
     const response = await this.api.post('/api/evaluation/start', evaluationData);
@@ -114,7 +119,13 @@ class ApiService {
     return response.data;
   }
 
-  // 文件上传API
+  // 批量测试结果API（如果需要）
+  async getBatchTestingResults(taskId: string) {
+    const response = await this.api.get(`/api/batch-testing/results/${taskId}`);
+    return response.data;
+  }
+
+  // 数据集上传API
   async uploadFile(file: File) {
     const formData = new FormData();
     formData.append('file', file);

@@ -459,10 +459,10 @@ const Finetuning: React.FC = () => {
                 <Col span={12}>
                   <Form.Item
                     name="model_id"
-                    label="基础模型"
-                    rules={[{ required: true, message: '请选择基础模型' }]}
+                    label="测试模型"
+                    rules={[{ required: true, message: '请选择测试模型' }]}
                   >
-                    <Select placeholder="请选择基础模型">
+                    <Select placeholder="请选择测试模型">
                       {models.map(model => (
                         <Option key={model.id} value={model.id}>
                           {model.name}
@@ -470,22 +470,7 @@ const Finetuning: React.FC = () => {
                       ))}
                     </Select>
                   </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="base_model"
-                    label="预训练模型"
-                    rules={[{ required: true, message: '请选择预训练模型' }]}
-                    initialValue="codebert-base"
-                  >
-                    <Select placeholder="请选择预训练模型">
-                      <Option value="codebert-base">CodeBERT-Base</Option>
-                      <Option value="codebert-large">CodeBERT-Large</Option>
-                      <Option value="graphcodebert">GraphCodeBERT</Option>
-                      <Option value="unixcoder">UnixCoder</Option>
-                    </Select>
-                  </Form.Item>
-                </Col>
+                </Col>  
               </Row>
 
               <Row gutter={16}>
