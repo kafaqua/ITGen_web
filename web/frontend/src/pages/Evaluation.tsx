@@ -860,7 +860,7 @@ ${evaluationResult.recommendations.map(rec => `- ${rec}`).join('\n')}
                           </List.Item>
                         )}
                       />
-                    </Card>
+      </Card>
                   </div>
                 </TabPane>
               </Tabs>

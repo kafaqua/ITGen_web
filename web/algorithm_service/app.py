@@ -257,7 +257,8 @@ class AlgorithmService:
                 'model_path': 'microsoft/codebert-base',
                 'tokenizer_path': 'microsoft/codebert-base',
                 'max_length': 512,
-                'supported_tasks': ['clone_detection', 'vulnerability_detection', 'code_summarization']
+                'supported_tasks': ['clone_detection', 'vulnerability_detection', 'code_summarization'],
+                'model_type': 'encoder'
             },
             'graphcodebert': {
                 'name': 'GraphCodeBERT',
@@ -265,7 +266,8 @@ class AlgorithmService:
                 'model_path': 'microsoft/graphcodebert-base',
                 'tokenizer_path': 'microsoft/graphcodebert-base',
                 'max_length': 512,
-                'supported_tasks': ['clone_detection', 'vulnerability_detection']
+                'supported_tasks': ['clone_detection', 'vulnerability_detection'],
+                'model_type': 'encoder'
             }
         }
         self.itgen_available = itgen_caller.available
@@ -281,6 +283,7 @@ class AlgorithmService:
                 'tokenizer_path': model_info['tokenizer_path'],
                 'max_length': model_info['max_length'],
                 'supported_tasks': model_info['supported_tasks'],
+                'model_type': model_info.get('model_type', ''),
                 'status': 'available',
                 'is_predefined': True
             }
@@ -307,7 +310,7 @@ class AlgorithmService:
         model_id = f"custom_{len(self.supported_models) + 1}"
         
         # 验证模型数据
-        required_fields = ['name', 'model_path', 'tokenizer_path', 'max_length', 'supported_tasks']
+        required_fields = ['name', 'model_path', 'tokenizer_path', 'max_length', 'supported_tasks', 'model_type']
         for field in required_fields:
             if field not in model_data:
                 raise ValueError(f"缺少必需字段: {field}")
@@ -319,7 +322,8 @@ class AlgorithmService:
             'model_path': model_data['model_path'],
             'tokenizer_path': model_data['tokenizer_path'],
             'max_length': model_data['max_length'],
-            'supported_tasks': model_data['supported_tasks']
+            'supported_tasks': model_data['supported_tasks'],
+            'model_type': model_data['model_type']
         }
         
         return model_id
@@ -421,8 +425,8 @@ class AlgorithmService:
             result['task_id'] = task_id
             
             return result
-            
-        except Exception as e:
+                    
+                except Exception as e:
             print(f"❌ ITGen攻击失败: {e}")
             return {
                 'success': True,
@@ -487,23 +491,23 @@ class AlgorithmService:
             
             # 如果ITGen算法不可用，使用模拟数据
             if not itgen_caller.available:
-                attack_results = {}
-                for method in attack_methods:
-                    attack_results[method] = {
-                        'asr': 0.75,
-                        'ami': 120.5,
-                        'art': 35.8,
-                        'total_samples': len(test_dataset),
-                        'successful_attacks': int(len(test_dataset) * 0.75)
-                    }
-                
+            attack_results = {}
+            for method in attack_methods:
+                attack_results[method] = {
+                    'asr': 0.75,
+                    'ami': 120.5,
+                    'art': 35.8,
+                    'total_samples': len(test_dataset),
+                    'successful_attacks': int(len(test_dataset) * 0.75)
+                }
+            
                 result['attack_results'] = attack_results
                 result['metrics'] = {'asr': 0.75, 'ami': 120.5, 'art': 35.8}
                 result['summary'] = {
                     'overall_metrics': {'asr': 0.75, 'ami': 120.5, 'art': 35.8},
                     'method_comparison': attack_results,
                     'recommendations': ['模型对对抗攻击的鲁棒性较低，建议进行对抗训练']
-                }
+            }
             
             return result
             
@@ -770,10 +774,19 @@ def upload_file():
         file = request.files['file']
         if file.filename == '':
             return jsonify({'success': False, 'error': '没有选择文件'}), 400
+        # 获取元数据
+        form = request.form.to_dict() if request.form else {}
+        
+        # 在真实实现中，可根据 file_type 决定存储位置与后续处理流程
+        # 如 file_type=dataset 且 purpose=attack 且 task_type=clone_detection
+        # 则可将该文件加入相应的数据集目录或队列
         
         # 模拟文件处理
         file_id = str(uuid.uuid4())
-        return jsonify({'success': True, 'file_id': file_id})
+        resp = {'success': True, 'file_id': file_id}
+        if form:
+            resp.update(form)
+        return jsonify(resp)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

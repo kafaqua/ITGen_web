@@ -30,6 +30,7 @@ const { Option } = Select;
 interface Model {
   id: string;
   name: string;
+  model_type?: string;
   description: string;
   model_path: string;
   tokenizer_path: string;
@@ -128,6 +129,12 @@ const Models: React.FC = () => {
           {record.is_predefined && <Tag color="blue">预定义</Tag>}
         </Space>
       ),
+    },
+    {
+      title: '模型类型',
+      dataIndex: 'model_type',
+      key: 'model_type',
+      render: (value: string | undefined) => value || '-'
     },
     {
       title: '描述',
@@ -288,6 +295,14 @@ const Models: React.FC = () => {
             rules={[{ required: true, message: '请输入模型名称' }]}
           >
             <Input placeholder="请输入模型名称" />
+          </Form.Item>
+
+          <Form.Item
+            name="model_type"
+            label="模型类型"
+            rules={[{ required: true, message: '请输入模型类型' }]}
+          >
+            <Input placeholder="例如: encoder / decoder / encoder-decoder 或自定义" />
           </Form.Item>
 
           <Form.Item

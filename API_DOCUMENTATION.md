@@ -53,6 +53,7 @@ GET /api/models
     {
       "id": "codebert",
       "name": "CodeBERT",
+      "model_type": "encoder",
       "description": "Microsoft CodeBERT for code understanding",
       "model_path": "microsoft/codebert-base",
       "tokenizer_path": "microsoft/codebert-base",
@@ -72,6 +73,7 @@ Content-Type: application/json
 
 {
   "name": "Custom Model",
+  "model_type": "encoder",
   "description": "Custom model description",
   "model_path": "path/to/model",
   "tokenizer_path": "path/to/tokenizer",
@@ -108,16 +110,21 @@ Content-Type: application/json
   "method": "itgen",
   "model_id": "codebert",
   "task_type": "clone_detection",
+  "language": "python",
   "code_data": {
     "code1": "def test_function():\n    return 'hello'",
     "code2": "def test_func():\n    return 'hello'"
   },
   "parameters": {
+    "attack_strategy": "identifier_rename",
     "max_queries": 100,
     "timeout": 60
   }
 }
 ```
+说明：
+- language 可选：python | java | c
+- parameters.attack_strategy 可选：identifier_rename | equivalent_transform | both
 
 **响应示例**:
 ```json
@@ -149,7 +156,8 @@ GET /api/attack/status/{task_id}
       "replaced_words": {"function": "func"},
       "query_times": 150,
       "time_cost": 45.2,
-      "method": "itgen"
+      "method": "itgen",
+      "attack_strategy": "identifier_rename"
     }
   }
 }
@@ -245,6 +253,11 @@ Content-Type: application/json
 }
 ```
 
+#### 5.2 获取批量测试结果（可选）
+```http
+GET /api/batch-testing/results/{task_id}
+```
+
 #### 5.2 获取批量测试状态
 ```http
 GET /api/batch-testing/status/{task_id}
@@ -252,19 +265,29 @@ GET /api/batch-testing/status/{task_id}
 
 ### 6. 文件上传接口
 
-#### 6.1 上传文件
+#### 6.1 上传文件（支持文件元数据）
 ```http
 POST /api/upload
 Content-Type: multipart/form-data
 
 file: [binary data]
+file_type: model | dataset
+purpose: attack | evaluation | finetuning | batch_testing
+task_type: clone_detection | vulnerability_detection | code_summarization | code_generation
+model_name: 可选（file_type=model 时建议）
+model_type: 可选（file_type=model 时建议）
+dataset_name: 可选（file_type=dataset 时建议）
 ```
 
 **响应示例**:
 ```json
 {
   "success": true,
-  "file_id": "uuid-string"
+  "file_id": "uuid-string",
+  "file_type": "dataset",
+  "purpose": "attack",
+  "task_type": "clone_detection",
+  "dataset_name": "my_attack_set_v1"
 }
 ```
 

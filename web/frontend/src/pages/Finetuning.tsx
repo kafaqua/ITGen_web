@@ -172,13 +172,33 @@ const Finetuning: React.FC = () => {
     setTrainingData(defaultData);
   };
 
-  const handleFileUpload = (info: any) => {
+  const handleFileUpload = async (info: any) => {
     const { file } = info;
-    if (file.status === 'done') {
+    // 需先选择任务类型
+    const taskType = form.getFieldValue('task_type');
+    if (!taskType) {
+      message.warning('请先选择任务类型再上传训练数据');
+      return;
+    }
+
+    // 上传到后端，携带任务类型与用途
+    if (file && file.originFileObj) {
+      try {
+        await ApiService.uploadFile(file.originFileObj as File, {
+          fileType: 'dataset',
+          purpose: 'finetuning',
+          taskType: taskType,
+          datasetName: file.name,
+        });
+      } catch (e) {
+        console.warn('训练数据上传失败，继续本地解析:', e);
+      }
+    }
+
+    // 本地解析
+    if (file && file.originFileObj) {
       setUploadedFile(file);
-      message.success(`${file.name} 文件上传成功`);
-      
-      // 解析上传的文件
+      message.success(`${file.name} 文件已选择并提交`);
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -514,6 +534,21 @@ const Finetuning: React.FC = () => {
                     </Select>
                   </Form.Item>
                 </Col>  
+                <Col span={12}>
+                  <Form.Item
+                    name="task_type"
+                    label="任务类型"
+                    rules={[{ required: true, message: '请选择任务类型' }]}
+                    initialValue="clone_detection"
+                  >
+                    <Select placeholder="请选择任务类型">
+                      <Option value="clone_detection">克隆检测</Option>
+                      <Option value="vulnerability_detection">漏洞检测</Option>
+                      <Option value="code_summarization">代码摘要</Option>
+                      <Option value="code_generation">代码生成</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
               </Row>
 
               <Row gutter={16}>

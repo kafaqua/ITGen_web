@@ -277,6 +277,7 @@ def get_models():
                     'tokenizer_path': 'microsoft/codebert-base',
                     'max_length': 512,
                     'supported_tasks': ['clone_detection', 'vulnerability_detection', 'code_summarization'],
+                    'model_type': 'encoder',
                     'status': 'available',
                     'is_predefined': True
                 },
@@ -288,6 +289,7 @@ def get_models():
                     'tokenizer_path': 'microsoft/graphcodebert-base',
                     'max_length': 512,
                     'supported_tasks': ['clone_detection', 'vulnerability_detection'],
+                    'model_type': 'encoder',
                     'status': 'available',
                     'is_predefined': True
                 },
@@ -299,6 +301,7 @@ def get_models():
                     'tokenizer_path': '',
                     'max_length': 0,
                     'supported_tasks': ['itgen_attack'],
+                    'model_type': '',
                     'status': 'unavailable',
                     'is_predefined': True
                 }
@@ -480,10 +483,17 @@ def upload_file():
         file = request.files['file']
         if file.filename == '':
             return jsonify({'success': False, 'error': '没有选择文件'}), 400
+        # 元数据（file_type、task_type、purpose 等）
+        form = request.form.to_dict() if request.form else {}
         
-        # 转发到算法服务
+        # 转发到算法服务（multipart）
         files = {'file': (file.filename, file.stream, file.content_type)}
-        response = requests.post(f"{ALGORITHM_SERVICE_URL}/api/upload", files=files, timeout=30)
+        response = requests.post(
+            f"{ALGORITHM_SERVICE_URL}/api/upload",
+            files=files,
+            data=form,
+            timeout=30
+        )
         response.raise_for_status()
         return jsonify(response.json())
     except requests.exceptions.RequestException as e:
@@ -491,7 +501,11 @@ def upload_file():
         # 返回模拟文件上传结果
         import uuid
         file_id = str(uuid.uuid4())
-        return jsonify({'success': True, 'file_id': file_id, 'note': '算法服务不可用，使用模拟结果'})
+        mock = {'success': True, 'file_id': file_id, 'note': '算法服务不可用，使用模拟结果'}
+        # 透传前端的元数据，便于前端后续逻辑
+        if request.form:
+            mock.update({k: v for k, v in request.form.items()})
+        return jsonify(mock)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

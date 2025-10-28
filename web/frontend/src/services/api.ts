@@ -39,23 +39,49 @@ class ApiService {
     );
   }
 
-  // 模型管理API
-  async getModels() {
+  // ===== 模型管理API =====
+  // 基础类型定义
+  public static readonly SupportedTasks = ['clone_detection','vulnerability_detection','code_summarization','code_generation'] as const;
+  public static readonly ModelTypes = ['encoder','decoder','encoder-decoder'] as const;
+
+  async getModels(): Promise<{
+    success: boolean;
+    data: Array<{
+      id: string;
+      name: string;
+      description: string;
+      model_path: string;
+      tokenizer_path: string;
+      max_length: number;
+      supported_tasks: string[];
+      model_type?: string;
+      status: string;
+      is_predefined: boolean;
+    }>;
+  }> {
     const response = await this.api.get('/api/models');
     return response.data;
   }
 
-  async addModel(modelData: any) {
+  async addModel(modelData: {
+    name: string;
+    model_type: string; // 前端必填：模型类型
+    description: string;
+    model_path: string;
+    tokenizer_path: string;
+    max_length: number;
+    supported_tasks: string[];
+  }): Promise<{ success: boolean; model_id?: string; error?: string }> {
     const response = await this.api.post('/api/models', modelData);
     return response.data;
   }
 
-  async deleteModel(modelId: string) {
+  async deleteModel(modelId: string): Promise<{ success: boolean; error?: string }> {
     const response = await this.api.delete(`/api/models/${modelId}`);
     return response.data;
   }
 
-  async testModel(modelId: string, testData: any) {
+  async testModel(modelId: string, testData: { task_type: string; [k: string]: any }): Promise<any> {
     const response = await this.api.post(`/api/models/${modelId}/test`, testData);
     return response.data;
   }
@@ -137,10 +163,26 @@ class ApiService {
     return response.data;
   }
 
-  // 数据集上传API
-  async uploadFile(file: File) {
+  // 数据/模型上传API（支持元数据）
+  async uploadFile(
+    file: File,
+    options?: {
+      fileType?: 'model' | 'dataset';
+      taskType?: 'clone_detection' | 'vulnerability_detection' | 'code_summarization' | 'code_generation';
+      purpose?: 'attack' | 'evaluation' | 'finetuning' | 'batch_testing';
+      modelName?: string; // 若为模型文件可附带
+      modelType?: string; // 若为模型文件可附带
+      datasetName?: string; // 若为数据集可附带
+    }
+  ) {
     const formData = new FormData();
     formData.append('file', file);
+    if (options?.fileType) formData.append('file_type', options.fileType);
+    if (options?.taskType) formData.append('task_type', options.taskType);
+    if (options?.purpose) formData.append('purpose', options.purpose);
+    if (options?.modelName) formData.append('model_name', options.modelName);
+    if (options?.modelType) formData.append('model_type', options.modelType);
+    if (options?.datasetName) formData.append('dataset_name', options.datasetName);
     
     const response = await this.api.post('/api/upload', formData, {
       headers: {
