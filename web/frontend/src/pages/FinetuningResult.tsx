@@ -67,7 +67,7 @@ const FinetuningResult: React.FC = () => {
       const mockData: FinetuningResultData = {
         result: {
           model_id: 'finetuned_mock',
-          model_name: '对抗性微调模型',
+          model_name: '鲁棒性增强模型',
           training_time: 1200,
           final_loss: 0.15,
           // 微调前性能
@@ -129,13 +129,13 @@ const FinetuningResult: React.FC = () => {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
         <Alert
-          message="未找到微调结果"
-          description="请返回微调页面重新开始训练"
+          message="未找到鲁棒性增强结果"
+          description="请返回鲁棒性增强页面重新开始训练"
           type="warning"
           showIcon
         />
         <Button onClick={handleBack} style={{ marginTop: '16px' }}>
-          返回微调页面
+          返回鲁棒性增强页面
         </Button>
       </div>
     );
@@ -191,9 +191,9 @@ const FinetuningResult: React.FC = () => {
           onClick={handleBack}
           style={{ marginBottom: '16px' }}
         >
-          返回微调页面
+          返回鲁棒性增强页面
         </Button>
-        <Title level={2}>对抗性微调结果</Title>
+        <Title level={2}>鲁棒性增强结果</Title>
       </div>
 
       <Row gutter={16}>
@@ -219,7 +219,7 @@ const FinetuningResult: React.FC = () => {
 
       <Row gutter={16}>
         <Col span={12}>
-          <Card title="微调前模型性能" bordered={false}>
+          <Card title="鲁棒性增强前模型性能" bordered={false}>
             <Row gutter={16}>
               <Col span={12}>
                 <Statistic 
@@ -265,7 +265,7 @@ const FinetuningResult: React.FC = () => {
         </Col>
 
         <Col span={12}>
-          <Card title="微调后模型性能" bordered={false}>
+          <Card title="鲁棒性增强后模型性能" bordered={false}>
             <Row gutter={16}>
               <Col span={12}>
                 <Statistic 
@@ -326,7 +326,7 @@ const FinetuningResult: React.FC = () => {
                 </div>
                 <Row gutter={16} align="middle">
                   <Col span={8}>
-                    <Text type="secondary">微调前: {metric.original.toFixed(3)}{metric.unit}</Text>
+                    <Text type="secondary">鲁棒性增强前: {metric.original.toFixed(3)}{metric.unit}</Text>
                   </Col>
                   <Col span={8}>
                     <Progress 
@@ -349,7 +349,7 @@ const FinetuningResult: React.FC = () => {
                     />
                   </Col>
                   <Col span={8}>
-                    <Text type="secondary">微调后: {metric.final.toFixed(3)}{metric.unit}</Text>
+                    <Text type="secondary">鲁棒性增强后: {metric.final.toFixed(3)}{metric.unit}</Text>
                   </Col>
                 </Row>
               </div>
@@ -432,7 +432,7 @@ const FinetuningResult: React.FC = () => {
               size="large"
               style={{ minWidth: '200px' }}
             >
-              返回微调页面
+              返回鲁棒性增强页面
             </Button>
             <Button 
               type="primary"
@@ -442,7 +442,7 @@ const FinetuningResult: React.FC = () => {
               size="large"
               style={{ minWidth: '200px' }}
             >
-              下载微调后模型
+              下载鲁棒性增强后模型
             </Button>
           </Space>
         </Col>

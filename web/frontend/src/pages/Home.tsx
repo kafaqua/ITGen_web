@@ -10,14 +10,36 @@ import {
   CloudUploadOutlined,
   ThunderboltOutlined,
   AppstoreOutlined,
-  LineChartOutlined
+  LineChartOutlined,
+  BarChartOutlined,
+  SafetyOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph, Text } = Typography;
 
+// 卡片悬浮效果样式
+const cardHoverStyle: React.CSSProperties = {
+  transition: 'all 0.3s ease',
+  cursor: 'pointer'
+};
+
 const Home: React.FC = () => {
   const navigate = useNavigate();
+
+  // 添加悬浮效果处理
+  const handleCardMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    card.style.transform = 'translateY(-8px)';
+    card.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.15)';
+  };
+
+  const handleCardMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    card.style.transform = 'translateY(0)';
+    card.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.09)';
+  };
 
   const features = [
     {
@@ -42,11 +64,18 @@ const Home: React.FC = () => {
       actionText: '批量对抗样本生成'
     },
     {
+      icon: <BarChartOutlined style={{ fontSize: '48px', color: '#fa8c16' }} />,
+      title: '安全测试',
+      description: '使用测试代码集对被测模型进行全面的鲁棒性评估。通过ITGen攻击引擎，利用贝叶斯优化生成对抗样本，输出ASR、AMI、ART等关键指标，生成详尽的评测报告。',
+      action: () => navigate('/evaluation'),
+      actionText: '开始评估'
+    },
+    {
       icon: <SettingOutlined style={{ fontSize: '48px', color: '#eb2f96' }} />,
-      title: '对抗性微调',
-      description: '使用批量生成的对抗样本对代码模型进行鲁棒性评估，并通过对抗训练提升模型鲁棒性，提供微调前后的性能对比（准确率/BLEU/ASR/AMI/ART）。',
+      title: '鲁棒性增强',
+      description: '通过在线对抗训练提升模型鲁棒性。利用ITGen生成高价值对抗样本并结合DPP采样确保多样性，混合训练原始样本和对抗样本，输出增强后的模型。',
       action: () => navigate('/finetuning'),
-      actionText: '开始微调'
+      actionText: '开始增强'
     }
   ];
 
@@ -78,8 +107,45 @@ const Home: React.FC = () => {
         核心功能
       </Title>
       <Row gutter={[24, 24]}>
-        {features.map((feature, index) => (
-          <Col xs={24} sm={12} lg={6} key={index}>
+        {features.slice(0, 3).map((feature, index) => (
+          <Col xs={24} sm={12} lg={8} key={index}>
+            <Card
+              hoverable
+              className="core-feature-card"
+              style={{ height: '100%' }}
+              bodyStyle={{ padding: '24px' }}
+              onClick={feature.action}
+            >
+              <div className="feature-content">
+                <div className="feature-icon" style={{ textAlign: 'center', marginBottom: '16px' }}>
+                  {feature.icon}
+                </div>
+                <Title level={4} className="feature-title" style={{ textAlign: 'center', marginBottom: '12px' }}>
+                  {feature.title}
+                </Title>
+                <Paragraph style={{ textAlign: 'center', marginBottom: '20px', minHeight: '120px' }}>
+                  {feature.description}
+                </Paragraph>
+                <div style={{ textAlign: 'center' }}>
+                  <Button 
+                    type="primary" 
+                    className="feature-button" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      feature.action();
+                    }}
+                  >
+                    {feature.actionText}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+      <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
+        {features.slice(3, 5).map((feature, index) => (
+          <Col xs={24} sm={12} lg={12} key={index + 3}>
             <Card
               hoverable
               className="core-feature-card"
@@ -121,15 +187,17 @@ const Home: React.FC = () => {
           平台使用流程
         </Title>
         
-        {/* 第一排：模型管理 → 对抗攻击 */}
-        <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
+        {/* 第一排：模型管理 → 对抗攻击 → 批量对抗样本生成 */}
+        <Row gutter={[24, 24]} justify="center" style={{ marginBottom: '24px' }}>
           {/* 步骤1: 模型管理 */}
           <Col xs={24} md={6}>
             <Card
               hoverable
-              style={{ height: '100%', borderColor: '#1890ff', borderWidth: '2px' }}
+              style={{ height: '100%', borderColor: '#1890ff', borderWidth: '2px', ...cardHoverStyle }}
               bodyStyle={{ padding: '24px' }}
               onClick={() => navigate('/models')}
+              onMouseEnter={handleCardMouseEnter}
+              onMouseLeave={handleCardMouseLeave}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{ 
@@ -175,9 +243,11 @@ const Home: React.FC = () => {
           <Col xs={24} md={6}>
             <Card
               hoverable
-              style={{ height: '100%', borderColor: '#52c41a', borderWidth: '2px' }}
+              style={{ height: '100%', borderColor: '#52c41a', borderWidth: '2px', ...cardHoverStyle }}
               bodyStyle={{ padding: '24px' }}
               onClick={() => navigate('/attack')}
+              onMouseEnter={handleCardMouseEnter}
+              onMouseLeave={handleCardMouseLeave}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{ 
@@ -214,19 +284,20 @@ const Home: React.FC = () => {
             </Card>
           </Col>
 
-          {/* 占位列，保持对齐 */}
-          <Col xs={0} md={11}></Col>
-        </Row>
+          {/* 箭头 */}
+          <Col xs={0} md={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowRightOutlined style={{ fontSize: '24px', color: '#52c41a' }} />
+          </Col>
 
-        {/* 第二排：批量对抗样本生成 和 对抗性微调 */}
-        <Row gutter={[24, 24]} style={{ marginBottom: '24px' }}>
           {/* 步骤3: 批量对抗样本生成 */}
           <Col xs={24} md={6}>
             <Card
               hoverable
-              style={{ height: '100%', borderColor: '#722ed1', borderWidth: '2px' }}
+              style={{ height: '100%', borderColor: '#722ed1', borderWidth: '2px', ...cardHoverStyle }}
               bodyStyle={{ padding: '24px' }}
               onClick={() => navigate('/batch-testing')}
+              onMouseEnter={handleCardMouseEnter}
+              onMouseLeave={handleCardMouseLeave}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{ 
@@ -262,19 +333,69 @@ const Home: React.FC = () => {
               </div>
             </Card>
           </Col>
+        </Row>
 
-          {/* 箭头 */}
-          <Col xs={0} md={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ArrowRightOutlined style={{ fontSize: '24px', color: '#722ed1' }} />
-          </Col>
-
-          {/* 步骤4: 对抗性微调 */}
+        {/* 第二排：安全测试 → 鲁棒性增强 */}
+        <Row gutter={[24, 24]} justify="center" style={{ marginBottom: '24px' }}>
+          {/* 步骤4: 安全测试 */}
           <Col xs={24} md={6}>
             <Card
               hoverable
-              style={{ height: '100%', borderColor: '#eb2f96', borderWidth: '2px' }}
+              style={{ height: '100%', borderColor: '#fa8c16', borderWidth: '2px', ...cardHoverStyle }}
+              bodyStyle={{ padding: '24px' }}
+              onClick={() => navigate('/evaluation')}
+              onMouseEnter={handleCardMouseEnter}
+              onMouseLeave={handleCardMouseLeave}
+            >
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  borderRadius: '50%', 
+                  background: '#fff7e6', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  margin: '0 auto 16px'
+                }}>
+                  <SafetyOutlined style={{ fontSize: '32px', color: '#fa8c16' }} />
+                </div>
+                <div style={{ 
+                  background: '#fa8c16', 
+                  color: '#fff', 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  fontWeight: 'bold',
+                  fontSize: '16px'
+                }}>4</div>
+                <Title level={4} style={{ marginBottom: '12px' }}>安全测试</Title>
+                <Paragraph style={{ color: '#666', marginBottom: '16px' }}>
+                  使用测试代码集评估模型鲁棒性，输出ASR、AMI、ART等指标
+                </Paragraph>
+                <Button type="primary" style={{ background: '#fa8c16', borderColor: '#fa8c16' }} size="small">开始评估</Button>
+              </div>
+            </Card>
+          </Col>
+
+          {/* 箭头 */}
+          <Col xs={0} md={1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowRightOutlined style={{ fontSize: '24px', color: '#fa8c16' }} />
+          </Col>
+
+          {/* 步骤5: 鲁棒性增强 */}
+          <Col xs={24} md={6}>
+            <Card
+              hoverable
+              style={{ height: '100%', borderColor: '#eb2f96', borderWidth: '2px', ...cardHoverStyle }}
               bodyStyle={{ padding: '24px' }}
               onClick={() => navigate('/finetuning')}
+              onMouseEnter={handleCardMouseEnter}
+              onMouseLeave={handleCardMouseLeave}
             >
               <div style={{ textAlign: 'center' }}>
                 <div style={{ 
@@ -287,7 +408,7 @@ const Home: React.FC = () => {
                   justifyContent: 'center',
                   margin: '0 auto 16px'
                 }}>
-                  <LineChartOutlined style={{ fontSize: '32px', color: '#eb2f96' }} />
+                  <SafetyCertificateOutlined style={{ fontSize: '32px', color: '#eb2f96' }} />
                 </div>
                 <div style={{ 
                   background: '#eb2f96', 
@@ -301,48 +422,55 @@ const Home: React.FC = () => {
                   margin: '0 auto 12px',
                   fontWeight: 'bold',
                   fontSize: '16px'
-                }}>4</div>
-                <Title level={4} style={{ marginBottom: '12px' }}>对抗性微调</Title>
+                }}>5</div>
+                <Title level={4} style={{ marginBottom: '12px' }}>鲁棒性增强</Title>
                 <Paragraph style={{ color: '#666', marginBottom: '16px' }}>
-                  使用批量生成的对抗样本进行鲁棒性评估与模型微调
+                  通过在线对抗训练提升模型鲁棒性，输出增强后的模型
                 </Paragraph>
-                <Button type="primary" style={{ background: '#eb2f96', borderColor: '#eb2f96' }} size="small">开始微调</Button>
+                <Button type="primary" style={{ background: '#eb2f96', borderColor: '#eb2f96' }} size="small">开始增强</Button>
               </div>
             </Card>
           </Col>
-
-          {/* 占位列，保持对齐 */}
-          <Col xs={0} md={11}></Col>
         </Row>
 
         {/* 流程说明 */}
         <Card style={{ background: '#f0f2f5', borderColor: '#d9d9d9' }}>
+          <Title level={4} style={{ textAlign: 'center', marginBottom: '16px' }}>完整工作流程</Title>
           <Row gutter={16} align="middle">
-            <Col xs={24} md={6} style={{ textAlign: 'center', padding: '16px' }}>
+            <Col xs={24} md={24} lg={24 / 5} style={{ textAlign: 'center', padding: '12px' }}>
               <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
                 <CloudUploadOutlined style={{ marginRight: '8px' }} />
                 上传模型
               </Text>
             </Col>
-            <Col xs={24} md={6} style={{ textAlign: 'center', padding: '16px' }}>
+            <Col xs={0} lg={24 / 5} style={{ textAlign: 'center', padding: '12px' }}>
               <Text strong style={{ fontSize: '14px', color: '#52c41a' }}>
                 <ThunderboltOutlined style={{ marginRight: '8px' }} />
                 单个样本测试
               </Text>
             </Col>
-            <Col xs={24} md={6} style={{ textAlign: 'center', padding: '16px' }}>
+            <Col xs={24} md={24} lg={24 / 5} style={{ textAlign: 'center', padding: '12px' }}>
               <Text strong style={{ fontSize: '14px', color: '#722ed1' }}>
                 <AppstoreOutlined style={{ marginRight: '8px' }} />
                 批量样本生成
               </Text>
             </Col>
-            <Col xs={24} md={6} style={{ textAlign: 'center', padding: '16px' }}>
+            <Col xs={24} md={12} lg={24 / 5} style={{ textAlign: 'center', padding: '12px' }}>
+              <Text strong style={{ fontSize: '14px', color: '#fa8c16' }}>
+                <SafetyOutlined style={{ marginRight: '8px' }} />
+                安全测试
+              </Text>
+            </Col>
+            <Col xs={24} md={12} lg={24 / 5} style={{ textAlign: 'center', padding: '12px' }}>
               <Text strong style={{ fontSize: '14px', color: '#eb2f96' }}>
-                <LineChartOutlined style={{ marginRight: '8px' }} />
-                评估与微调
+                <SafetyCertificateOutlined style={{ marginRight: '8px' }} />
+                鲁棒性增强
               </Text>
             </Col>
           </Row>
+          <Paragraph style={{ textAlign: 'center', marginTop: '16px', marginBottom: '0', color: '#666' }}>
+            从模型接入到鲁棒性增强的完整自动化流程，全面保障代码模型的安全性与可靠性
+          </Paragraph>
         </Card>
       </div>
     </div>

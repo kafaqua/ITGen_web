@@ -39,15 +39,16 @@ const Sidebar: React.FC = () => {
       label: '批量对抗样本生成',
     },
     {
-      key: '/finetuning',
-      icon: <SettingOutlined />,
-      label: '对抗性微调',
-    },
-    {
       key: '/evaluation',
       icon: <BarChartOutlined />,
-      label: '鲁棒性评估',
+      label: '安全测试',
     },
+    {
+      key: '/finetuning',
+      icon: <SettingOutlined />,
+      label: '鲁棒性增强',
+    },
+    
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {

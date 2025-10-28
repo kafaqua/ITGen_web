@@ -257,18 +257,18 @@ const Finetuning: React.FC = () => {
       if (response.success) {
         const taskId = response.task_id;
         setCurrentTaskId(taskId);
-        setTaskStatus('对抗性微调已启动');
+        setTaskStatus('鲁棒性增强已启动');
         
-        message.success('对抗性微调已启动');
+        message.success('鲁棒性增强已启动');
         
         // 模拟训练进度
         simulateTraining(taskId);
       } else {
-        message.error(response.error || '微调启动失败');
+        message.error(response.error || '增强启动失败');
         setTrainingRunning(false);
       }
     } catch (error) {
-      message.error('微调启动失败');
+      message.error('增强启动失败');
       console.error('Error starting finetuning:', error);
       setTrainingRunning(false);
     } finally {
@@ -307,7 +307,7 @@ const Finetuning: React.FC = () => {
       
       if (epoch >= totalEpochs) {
         clearInterval(interval);
-        setTaskStatus('对抗性微调完成');
+        setTaskStatus('鲁棒性增强完成');
         setTrainingRunning(false);
         setTrainingComplete(true);
         setCurrentStep(3);
@@ -358,7 +358,7 @@ const Finetuning: React.FC = () => {
     
     const result: FinetuningResult = {
       model_id: `finetuned_${Date.now()}`,
-      model_name: `对抗性微调模型_${new Date().toLocaleDateString()}`,
+      model_name: `鲁棒性增强模型_${new Date().toLocaleDateString()}`,
       training_time: Math.floor(Math.random() * 1800) + 600, // 10-40分钟
       final_loss: 0.1 + Math.random() * 0.2,
       // 微调前性能
@@ -387,7 +387,7 @@ const Finetuning: React.FC = () => {
     };
     
     setFinetuningResult(result);
-    message.success('对抗性微调完成');
+    message.success('鲁棒性增强完成');
   };
 
   const handleStopTraining = () => {
@@ -395,7 +395,7 @@ const Finetuning: React.FC = () => {
     setTaskStatus('');
     setCurrentTaskId(null);
     setCurrentStep(0);
-    message.info('对抗性微调已停止');
+    message.info('鲁棒性增强已停止');
   };
 
   const downloadModel = () => {
@@ -493,13 +493,13 @@ const Finetuning: React.FC = () => {
       icon: <CodeOutlined />
     },
     {
-      title: '对抗训练',
-      description: '执行对抗性微调训练',
+      title: '鲁棒性增强',
+      description: '执行鲁棒性增强',
       icon: <ExperimentOutlined />
     },
     {
       title: '模型保存',
-      description: '保存微调后的模型',
+      description: '保存鲁棒性增强后的模型',
       icon: <CheckCircleOutlined />
     }
   ];
@@ -507,12 +507,12 @@ const Finetuning: React.FC = () => {
   return (
     <div>
       <Title level={2} style={{ marginBottom: '24px' }}>
-        对抗性微调
+        模型鲁棒性增强
       </Title>
 
       <Row gutter={24}>
         <Col span={16}>
-          <Card title="微调配置">
+          <Card title="鲁棒性增强配置">
             <Form
               form={form}
               layout="vertical"
@@ -650,7 +650,7 @@ const Finetuning: React.FC = () => {
                     icon={<PlayCircleOutlined />}
                     size="large"
                   >
-                    开始对抗性微调
+                    开始鲁棒性增强
                   </Button>
                   {trainingRunning && (
                     <Button 
@@ -728,7 +728,7 @@ const Finetuning: React.FC = () => {
           )}
 
           {finetuningResult && (
-            <Card title="微调结果" style={{ marginTop: '16px' }}>
+            <Card title="增强结果" style={{ marginTop: '16px' }}>
               <Row gutter={16} style={{ marginBottom: '24px' }}>
                 <Col span={6}>
                   <Statistic 
@@ -764,28 +764,28 @@ const Finetuning: React.FC = () => {
               <Row gutter={16} style={{ marginBottom: '24px' }}>
                 <Col span={6}>
                   <Statistic 
-                    title="微调前准确率" 
+                    title="鲁棒性增强前准确率" 
                     value={`${(finetuningResult.original_accuracy * 100).toFixed(2)}%`}
                     valueStyle={{ color: '#8c8c8c' }}
                   />
                 </Col>
                 <Col span={6}>
                   <Statistic 
-                    title="微调后准确率" 
+                    title="鲁棒性增强后准确率" 
                     value={`${(finetuningResult.final_accuracy * 100).toFixed(2)}%`}
                     valueStyle={{ color: '#3f8600' }}
                   />
                 </Col>
                 <Col span={6}>
                   <Statistic 
-                    title="微调前BLEU" 
+                    title="鲁棒性增强前BLEU" 
                     value={finetuningResult.original_bleu_score.toFixed(3)}
                     valueStyle={{ color: '#8c8c8c' }}
                   />
                 </Col>
                 <Col span={6}>
                   <Statistic 
-                    title="微调后BLEU" 
+                    title="鲁棒性增强后BLEU" 
                     value={finetuningResult.final_bleu_score.toFixed(3)}
                     valueStyle={{ color: '#52c41a' }}
                   />
@@ -857,7 +857,7 @@ const Finetuning: React.FC = () => {
                 />
                 <div style={{ marginTop: '16px', textAlign: 'center' }}>
                   <Alert
-                    message="微调已完成"
+                    message="鲁棒性增强已完成"
                     type="success"
                     showIcon
                   />
@@ -922,16 +922,16 @@ const Finetuning: React.FC = () => {
             )}
           </Card>
 
-          <Card title="微调说明" style={{ marginTop: '16px' }}>
+          <Card title="鲁棒性增强说明" style={{ marginTop: '16px' }}>
             <div>
-              <h4>对抗性微调</h4>
+              <h4>对抗性鲁棒性增强</h4>
               <p>通过对抗样本训练提高模型的鲁棒性和泛化能力。</p>
               
               <h4>训练流程</h4>
               <ol>
                 <li>加载预训练模型</li>
                 <li>准备对抗训练数据</li>
-                <li>执行对抗性微调</li>
+                <li>执行鲁棒性增强</li>
                 <li>评估和保存模型</li>
               </ol>
             </div>
