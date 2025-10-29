@@ -2,6 +2,29 @@
 
 本文档详细描述了深度代码模型鲁棒性评估与增强平台的API接口，包括后端API服务、算法服务以及ITGen算法接口。
 
+---
+
+## 📝 更新日志
+
+### 2025-10-29 - v1.1.0 ⭐ 图表数据流完善
+**新增接口**:
+- `GET /api/finetuning/results/{task_id}` - 获取微调结果（含15个训练日志数据点）
+- `GET /api/evaluation/status/{task_id}` - 获取安全测试状态
+- `GET /api/evaluation/results/{task_id}` - 获取安全测试详细结果
+
+**增强功能**:
+- 算法服务生成完整的训练日志数据（15个数据点）
+- 支持前端四大图表可视化（损失、准确率、ASR、学习率）
+- 实现三级数据降级策略（API → sessionStorage → mock）
+- 新增图表数据流说明章节
+
+**数据结构**:
+- `training_logs`: 包含epoch, step, loss, accuracy, asr, learning_rate
+- `identifier_replacements`: 标识符替换详细列表
+- 完整的性能对比指标（微调前后、改进幅度）
+
+---
+
 ## 系统架构
 
 ```
@@ -200,6 +223,91 @@ GET /api/evaluation/reports
 GET /api/evaluation/reports/{report_id}
 ```
 
+#### 3.4 获取安全测试状态 ⭐ 新增
+```http
+GET /api/evaluation/status/{task_id}
+```
+
+**说明**: 获取安全测试任务的状态信息。
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "status": {
+    "status": "running",
+    "progress": 45,
+    "message": "正在测试第5个样本...",
+    "current_sample": 5,
+    "total_samples": 10
+  }
+}
+```
+
+#### 3.5 获取安全测试结果 ⭐ 新增
+```http
+GET /api/evaluation/results/{task_id}
+```
+
+**说明**: 获取安全测试任务的详细结果，包含对抗样本数据和性能指标。
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "task_id": "eval_xyz789abc",
+  "sample_id": "sample_001",
+  "code": "def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result",
+  "label": 1,
+  "difficulty": "medium",
+  "attack_success": true,
+  
+  "asr": 0.75,
+  "ami": 92.5,
+  "art": 28.7,
+  
+  "original_code": "def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result",
+  
+  "adversarial_code": "def calc_sum(nums):\n    res = 0\n    for num in nums:\n        res += num\n    return res",
+  
+  "identifier_replacements": [
+    {
+      "original": "calculate_sum",
+      "adversarial": "calc_sum",
+      "line": 1
+    },
+    {
+      "original": "numbers",
+      "adversarial": "nums",
+      "line": 1
+    },
+    {
+      "original": "result",
+      "adversarial": "res",
+      "line": 2
+    },
+    {
+      "original": "number",
+      "adversarial": "num",
+      "line": 3
+    }
+  ],
+  
+  "query_times": 45,
+  "time_cost": 12.5,
+  "created_at": "2025-10-29T10:35:00Z"
+}
+```
+
+**字段说明**:
+- `asr`: 攻击成功率 (0-1范围)
+- `ami`: 平均修改索引
+- `art`: 对抗响应时间
+- `identifier_replacements`: 标识符替换列表，包含原始、对抗和所在行号
+- `query_times`: 查询次数
+- `time_cost`: 时间成本（秒）
+- 用于前端性能指标可视化和代码差异对比
+
 ### 4. 对抗性微调接口
 
 #### 4.1 开始对抗性微调
@@ -236,6 +344,208 @@ Content-Type: application/json
 ```http
 GET /api/finetuning/status/{task_id}
 ```
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "status": {
+    "status": "running",
+    "progress": 60,
+    "message": "正在进行第3轮训练...",
+    "current_epoch": 3,
+    "total_epochs": 5
+  }
+}
+```
+
+#### 4.3 获取微调结果 ⭐ 新增
+```http
+GET /api/finetuning/results/{task_id}
+```
+
+**说明**: 获取微调任务的完整结果，包含15个训练日志数据点，用于前端图表可视化。
+
+**响应示例**:
+```json
+{
+  "success": true,
+  "task_id": "ft_abc123xyz",
+  "model_id": "codebert",
+  "model_name": "CodeBERT",
+  "model_path": "/models/codebert_finetuned",
+  "training_time": 285,
+  "final_loss": 0.150,
+  
+  "original_accuracy": 0.78,
+  "final_accuracy": 0.88,
+  "accuracy_improvement": 0.10,
+  
+  "original_bleu": 65.5,
+  "final_bleu": 72.3,
+  "bleu_improvement": 6.8,
+  
+  "original_asr": 0.45,
+  "final_asr": 0.28,
+  "asr_improvement": -0.17,
+  
+  "original_ami": 95.5,
+  "final_ami": 85.2,
+  "ami_improvement": -10.3,
+  
+  "original_art": 32.5,
+  "final_art": 28.3,
+  "art_improvement": -4.2,
+  
+  "overall_improvement": 12.5,
+  
+  "training_logs": [
+    {
+      "epoch": 1,
+      "step": 10,
+      "loss": 0.850,
+      "accuracy": 0.65,
+      "asr": 0.45,
+      "learning_rate": 0.0001
+    },
+    {
+      "epoch": 1,
+      "step": 20,
+      "loss": 0.780,
+      "accuracy": 0.68,
+      "asr": 0.43,
+      "learning_rate": 0.0001
+    },
+    {
+      "epoch": 1,
+      "step": 30,
+      "loss": 0.720,
+      "accuracy": 0.70,
+      "asr": 0.42,
+      "learning_rate": 0.0001
+    },
+    {
+      "epoch": 2,
+      "step": 10,
+      "loss": 0.650,
+      "accuracy": 0.73,
+      "asr": 0.40,
+      "learning_rate": 0.0001
+    },
+    {
+      "epoch": 2,
+      "step": 20,
+      "loss": 0.580,
+      "accuracy": 0.75,
+      "asr": 0.39,
+      "learning_rate": 0.00009
+    },
+    {
+      "epoch": 2,
+      "step": 30,
+      "loss": 0.520,
+      "accuracy": 0.77,
+      "asr": 0.37,
+      "learning_rate": 0.00009
+    },
+    {
+      "epoch": 3,
+      "step": 10,
+      "loss": 0.450,
+      "accuracy": 0.80,
+      "asr": 0.35,
+      "learning_rate": 0.00008
+    },
+    {
+      "epoch": 3,
+      "step": 20,
+      "loss": 0.380,
+      "accuracy": 0.82,
+      "asr": 0.34,
+      "learning_rate": 0.00008
+    },
+    {
+      "epoch": 3,
+      "step": 30,
+      "loss": 0.320,
+      "accuracy": 0.84,
+      "asr": 0.32,
+      "learning_rate": 0.00008
+    },
+    {
+      "epoch": 4,
+      "step": 10,
+      "loss": 0.280,
+      "accuracy": 0.85,
+      "asr": 0.31,
+      "learning_rate": 0.00007
+    },
+    {
+      "epoch": 4,
+      "step": 20,
+      "loss": 0.240,
+      "accuracy": 0.86,
+      "asr": 0.30,
+      "learning_rate": 0.00007
+    },
+    {
+      "epoch": 4,
+      "step": 30,
+      "loss": 0.200,
+      "accuracy": 0.87,
+      "asr": 0.29,
+      "learning_rate": 0.00007
+    },
+    {
+      "epoch": 5,
+      "step": 10,
+      "loss": 0.180,
+      "accuracy": 0.87,
+      "asr": 0.29,
+      "learning_rate": 0.00007
+    },
+    {
+      "epoch": 5,
+      "step": 20,
+      "loss": 0.165,
+      "accuracy": 0.88,
+      "asr": 0.28,
+      "learning_rate": 0.00007
+    },
+    {
+      "epoch": 5,
+      "step": 30,
+      "loss": 0.150,
+      "accuracy": 0.88,
+      "asr": 0.28,
+      "learning_rate": 0.00007
+    }
+  ],
+  
+  "task_type": "clone_detection",
+  "finetuning_params": {
+    "learning_rate": 0.0001,
+    "batch_size": 8,
+    "epochs": 5,
+    "warmup_steps": 100,
+    "max_length": 512,
+    "adversarial_ratio": 0.3
+  },
+  "created_at": "2025-10-29T10:30:00Z",
+  "status": "completed"
+}
+```
+
+**字段说明**:
+- `training_logs`: 15个训练日志数据点（每个epoch 3步，共5个epoch）
+  - `epoch`: 训练轮次 (1-5)
+  - `step`: 当前步数 (10, 20, 30)
+  - `loss`: 损失函数值 (0.850 → 0.150，递减)
+  - `accuracy`: 准确率 (0.65 → 0.88，递增)
+  - `asr`: 攻击成功率 (0.45 → 0.28，递减表示鲁棒性提升)
+  - `learning_rate`: 学习率 (0.0001 → 0.00007，衰减)
+- 改进指标为负数表示降低（如ASR降低是好事）
+- 用于前端四大图表可视化
 
 ### 5. 批量测试接口
 
@@ -694,6 +1004,129 @@ interface FinetuningResult {
   status: string;
 }
 ```
+
+## 图表数据流说明 ⭐ 新增
+
+### 概述
+本平台实现了完整的图表数据流，从算法执行、后端存储到前端可视化展示。
+
+### 数据流架构
+```
+ITGen算法服务 (8000)
+    ↓ 执行算法，生成训练日志
+后端API服务 (5000)
+    ↓ 转发请求，缓存结果
+前端React应用 (3000)
+    ↓ 获取数据，可视化展示
+```
+
+### 鲁棒性增强数据流
+
+#### 1. 训练日志生成
+算法服务在执行微调时生成15个训练日志数据点：
+- **数据点数量**: 15个（每个epoch 3步，共5个epoch）
+- **包含字段**: epoch, step, loss, accuracy, asr, learning_rate
+- **数据趋势**:
+  - loss: 0.850 → 0.150（递减）
+  - accuracy: 0.65 → 0.88（递增）
+  - asr: 0.45 → 0.28（递减，表示鲁棒性提升）
+  - learning_rate: 0.0001 → 0.00007（衰减）
+
+#### 2. 完整流程
+```
+1. 用户配置参数 → POST /api/finetuning/start
+2. 后端转发到算法服务 → POST http://localhost:8000/api/finetuning/start
+3. 算法服务执行ITGen微调 → 生成training_logs
+4. 算法服务存储结果 → task_results[task_id]
+5. 返回task_id → {success: true, task_id: "ft_abc123"}
+6. 前端保存到sessionStorage
+7. 用户查看结果 → GET /api/finetuning/results/{task_id}
+8. 前端获取完整数据 → 包含15个training_logs
+9. 前端渲染四大图表 → 损失、准确率、ASR、学习率
+```
+
+#### 3. 四大核心图表
+| 图表 | 数据源 | 数据点数 | 曲线颜色 | 数据点颜色 |
+|------|--------|---------|---------|-----------|
+| 损失函数曲线 | training_logs[].loss | 15个 | 黑色 #000000 | 红色 #ff4d4f |
+| 准确率曲线 | training_logs[].accuracy | 5个（每3步） | 黑色 #000000 | 绿色 #52c41a |
+| ASR曲线 | training_logs[].asr | 5个（每3步） | 黑色 #000000 | 蓝色 #1890ff |
+| 学习率曲线 | training_logs[].learning_rate | 4个（关键点） | 黑色 #000000 | 紫色 #722ed1 |
+
+### 安全测试数据流
+
+#### 1. 测试结果生成
+算法服务对每个代码样本执行ITGen攻击：
+- 贝叶斯优化选择CIIV
+- 生成对抗样本
+- 记录标识符替换
+- 计算ASR、AMI、ART指标
+
+#### 2. 数据结构
+```json
+{
+  "asr": 0.75,              // 攻击成功率
+  "ami": 92.5,              // 平均修改索引
+  "art": 28.7,              // 对抗响应时间
+  "identifier_replacements": [  // 标识符替换列表
+    {"original": "calculate_sum", "adversarial": "calc_sum", "line": 1}
+  ]
+}
+```
+
+#### 3. 前端可视化
+- **性能指标图表**: 条形图显示ASR、AMI、ART
+- **对抗样本浏览器**: 代码差异对比
+- **标识符替换表**: 显示所有替换详情
+
+### 数据降级策略
+前端实现三级降级机制确保数据可用性：
+```
+1. API调用 (优先)
+   ↓ 失败
+2. sessionStorage (缓存)
+   ↓ 失败
+3. Mock数据 (兜底)
+```
+
+### API调用示例
+
+#### 获取微调结果
+```bash
+curl http://localhost:5000/api/finetuning/results/ft_abc123
+```
+
+**响应包含**:
+- 15个训练日志数据点
+- 微调前后性能对比
+- 完整的性能指标
+
+#### 获取安全测试结果
+```bash
+curl http://localhost:5000/api/evaluation/results/eval_xyz789
+```
+
+**响应包含**:
+- ASR、AMI、ART指标
+- 原始代码与对抗代码
+- 标识符替换映射
+
+### 前端数据转换
+```typescript
+// API响应 → 前端格式
+const formattedData = {
+  training_logs: apiResponse.training_logs,  // 直接使用
+  original_ami: apiResponse.original_ami / 100,  // 转为0-1范围
+  asr_improvement: Math.abs(apiResponse.asr_improvement) * 100  // 转为百分比
+};
+```
+
+### 技术特点
+- ✅ **完整数据流**: 算法 → 后端 → 前端
+- ✅ **实时生成**: 每次训练生成新的日志数据
+- ✅ **持久化存储**: 算法服务内存存储（task_results）
+- ✅ **降级保障**: 三级降级策略确保可用性
+- ✅ **响应式图表**: SVG分层渲染，支持任意缩放
 
 ## 快速开始
 

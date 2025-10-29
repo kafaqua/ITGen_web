@@ -449,6 +449,45 @@ def get_finetuning_status(task_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/finetuning/results/<task_id>')
+def get_finetuning_results(task_id):
+    """获取微调任务结果（包含训练日志）"""
+    try:
+        # 从算法服务获取完整结果
+        response = requests.get(f'{ALGORITHM_SERVICE_URL}/api/finetuning/results/{task_id}')
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'success': False, 'error': '结果不存在'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# 安全测试结果 API
+@app.route('/api/evaluation/results/<task_id>')
+def get_evaluation_results(task_id):
+    """获取安全测试结果（包含详细数据）"""
+    try:
+        # 从算法服务获取完整结果
+        response = requests.get(f'{ALGORITHM_SERVICE_URL}/api/evaluation/results/{task_id}')
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({'success': False, 'error': '结果不存在'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/evaluation/status/<task_id>')
+def get_evaluation_status(task_id):
+    """获取安全测试任务状态"""
+    try:
+        status = task_manager.get_task_status(task_id)
+        if status:
+            return jsonify({'success': True, 'status': status})
+        else:
+            return jsonify({'success': False, 'error': '任务不存在'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # 批量测试 API
 @app.route('/api/batch-testing/start', methods=['POST'])
 def start_batch_testing():

@@ -123,6 +123,17 @@ class ApiService {
     return response.data;
   }
 
+  // 安全测试结果API（详细数据）
+  async getEvaluationResults(taskId: string) {
+    const response = await this.api.get(`/api/evaluation/results/${taskId}`);
+    return response.data;
+  }
+
+  async getEvaluationStatus(taskId: string) {
+    const response = await this.api.get(`/api/evaluation/status/${taskId}`);
+    return response.data;
+  }
+
   // 对抗性微调API
   async startFinetuning(finetuningData: any) {
     const response = await this.api.post('/api/finetuning/start', finetuningData);

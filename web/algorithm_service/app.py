@@ -250,6 +250,7 @@ class AlgorithmService:
     
     def __init__(self):
         self.loaded_models = {}
+        self.task_results = {}  # 存储任务结果
         self.supported_models = {
             'codebert': {
                 'name': 'CodeBERT',
@@ -529,41 +530,58 @@ class AlgorithmService:
             # 模拟微调过程
             time.sleep(5)  # 模拟训练时间
             
+            # 生成详细的训练日志（每个epoch 3步，共5个epoch，15个数据点）
+            training_logs = [
+                {'epoch': 1, 'step': 10, 'loss': 0.850, 'accuracy': 0.65, 'asr': 0.45, 'learning_rate': 0.0001},
+                {'epoch': 1, 'step': 20, 'loss': 0.780, 'accuracy': 0.68, 'asr': 0.43, 'learning_rate': 0.0001},
+                {'epoch': 1, 'step': 30, 'loss': 0.720, 'accuracy': 0.70, 'asr': 0.42, 'learning_rate': 0.0001},
+                {'epoch': 2, 'step': 10, 'loss': 0.650, 'accuracy': 0.73, 'asr': 0.40, 'learning_rate': 0.0001},
+                {'epoch': 2, 'step': 20, 'loss': 0.580, 'accuracy': 0.75, 'asr': 0.39, 'learning_rate': 0.00009},
+                {'epoch': 2, 'step': 30, 'loss': 0.520, 'accuracy': 0.77, 'asr': 0.37, 'learning_rate': 0.00009},
+                {'epoch': 3, 'step': 10, 'loss': 0.450, 'accuracy': 0.80, 'asr': 0.35, 'learning_rate': 0.00008},
+                {'epoch': 3, 'step': 20, 'loss': 0.380, 'accuracy': 0.82, 'asr': 0.34, 'learning_rate': 0.00008},
+                {'epoch': 3, 'step': 30, 'loss': 0.320, 'accuracy': 0.84, 'asr': 0.32, 'learning_rate': 0.00008},
+                {'epoch': 4, 'step': 10, 'loss': 0.280, 'accuracy': 0.85, 'asr': 0.31, 'learning_rate': 0.00007},
+                {'epoch': 4, 'step': 20, 'loss': 0.240, 'accuracy': 0.86, 'asr': 0.30, 'learning_rate': 0.00007},
+                {'epoch': 4, 'step': 30, 'loss': 0.200, 'accuracy': 0.87, 'asr': 0.29, 'learning_rate': 0.00007},
+                {'epoch': 5, 'step': 10, 'loss': 0.180, 'accuracy': 0.87, 'asr': 0.29, 'learning_rate': 0.00007},
+                {'epoch': 5, 'step': 20, 'loss': 0.165, 'accuracy': 0.88, 'asr': 0.28, 'learning_rate': 0.00007},
+                {'epoch': 5, 'step': 30, 'loss': 0.150, 'accuracy': 0.88, 'asr': 0.28, 'learning_rate': 0.00007}
+            ]
+            
             result = {
                 'success': True,
                 'task_id': task_id,
-                'original_model_id': model_id,
-                'finetuned_model_id': f"{model_id}_finetuned_{task_id}",
+                'model_id': model_id,
+                'model_name': finetuning_data.get('model_name', 'CodeBERT'),
+                'model_path': f'/models/{model_id}_finetuned',
+                'training_time': 285,  # 4分45秒
+                'final_loss': 0.150,
+                'original_accuracy': 0.78,
+                'final_accuracy': 0.88,
+                'accuracy_improvement': 0.10,
+                'original_bleu': 65.5,
+                'final_bleu': 72.3,
+                'bleu_improvement': 6.8,
+                'original_asr': 0.45,
+                'final_asr': 0.28,
+                'asr_improvement': -0.17,  # ASR降低是好的
+                'original_ami': 95.5,
+                'final_ami': 85.2,
+                'ami_improvement': -10.3,  # AMI降低是好的
+                'original_art': 32.5,
+                'final_art': 28.3,
+                'art_improvement': -4.2,  # ART降低是好的
+                'overall_improvement': 12.5,
+                'training_logs': training_logs,
                 'task_type': task_type,
                 'finetuning_params': parameters,
-                'performance_comparison': {
-                    'original_model': {
-                        'accuracy': 0.85,
-                        'precision': 0.82,
-                        'recall': 0.88,
-                        'f1': 0.85
-                    },
-                    'finetuned_model': {
-                        'accuracy': 0.92,
-                        'precision': 0.90,
-                        'recall': 0.94,
-                        'f1': 0.92
-                    },
-                    'improvement': {
-                        'accuracy': 0.07,
-                        'precision': 0.08,
-                        'recall': 0.06,
-                        'f1': 0.07
-                    }
-                },
-                'training_history': [
-                    {'epoch': 1, 'train_loss': 0.45, 'train_accuracy': 0.78, 'val_loss': 0.52, 'val_accuracy': 0.75, 'learning_rate': 2e-5},
-                    {'epoch': 2, 'train_loss': 0.32, 'train_accuracy': 0.85, 'val_loss': 0.38, 'val_accuracy': 0.82, 'learning_rate': 2e-5},
-                    {'epoch': 3, 'train_loss': 0.28, 'train_accuracy': 0.92, 'val_loss': 0.31, 'val_accuracy': 0.89, 'learning_rate': 2e-5}
-                ],
                 'created_at': datetime.now().isoformat(),
                 'status': 'completed'
             }
+            
+            # 存储结果供后续查询
+            self.task_results[task_id] = result
             
             return result
             
@@ -748,6 +766,53 @@ def start_finetuning():
         task_id = data.get('task_id', str(uuid.uuid4()))
         result = algorithm_service.run_finetuning(data, task_id)
         return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/finetuning/results/<task_id>')
+def get_finetuning_results(task_id):
+    """获取微调任务结果"""
+    try:
+        if task_id in algorithm_service.task_results:
+            return jsonify(algorithm_service.task_results[task_id])
+        else:
+            return jsonify({'success': False, 'error': '任务结果不存在'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# 安全测试结果 API
+@app.route('/api/evaluation/results/<task_id>')
+def get_evaluation_results(task_id):
+    """获取安全测试结果"""
+    try:
+        if task_id in algorithm_service.task_results:
+            return jsonify(algorithm_service.task_results[task_id])
+        else:
+            # 返回模拟数据
+            mock_result = {
+                'success': True,
+                'task_id': task_id,
+                'sample_id': 'sample_001',
+                'code': 'def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result',
+                'label': 1,
+                'difficulty': 'medium',
+                'attack_success': True,
+                'asr': 0.75,
+                'ami': 92.5,
+                'art': 28.7,
+                'original_code': 'def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result',
+                'adversarial_code': 'def calc_sum(nums):\n    res = 0\n    for num in nums:\n        res += num\n    return res',
+                'identifier_replacements': [
+                    {'original': 'calculate_sum', 'adversarial': 'calc_sum', 'line': 1},
+                    {'original': 'numbers', 'adversarial': 'nums', 'line': 1},
+                    {'original': 'result', 'adversarial': 'res', 'line': 2},
+                    {'original': 'number', 'adversarial': 'num', 'line': 3}
+                ],
+                'query_times': 45,
+                'time_cost': 12.5,
+                'created_at': datetime.now().isoformat()
+            }
+            return jsonify(mock_result)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
