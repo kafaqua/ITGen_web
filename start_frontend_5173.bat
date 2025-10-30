@@ -1,9 +1,0 @@
-@echo off
-echo 启动前端服务 (端口 5173)...
-cd web\frontend
-echo 当前目录: %CD%
-echo 检查npm版本...
-npm --version
-echo 启动前端服务...
-npm start
-pause
