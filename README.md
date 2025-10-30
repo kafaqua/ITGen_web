@@ -1,229 +1,24 @@
-# 深度代码模型鲁棒性评估与增强平台 - ITGen_web
+This project is the open-source repository of ITGen_web, containing the frontend demo and backend demo of ITGen_web.
 
-## 项目结构
+---
 
-```
-ITGen_web/                    # 根目录
-├── ITGen/                    # 原始ITGen算法代码（与web同级）
-│   ├── algorithms/           # 算法模块
-│   ├── CodeBERT_adv/        # CodeBERT对抗攻击代码
-│   ├── utils.py             # 工具函数
-│   └── ...
-├── web/                      # Web应用代码
-│   ├── frontend/            # React前端应用
-│   │   ├── src/
-│   │   │   ├── components/  # React组件
-│   │   │   ├── pages/       # 页面组件
-│   │   │   ├── services/    # API服务
-│   │   │   └── hooks/       # 自定义Hooks
-│   │   ├── package.json     # 前端依赖
-│   │   └── nginx.conf      # Nginx配置
-│   ├── backend/             # Flask后端API服务
-│   │   ├── app.py          # API服务主文件
-│   │   └── requirements.txt
-│   └── algorithm_service/   # 独立算法微服务
-│       ├── app.py          # 算法服务主文件
-│       └── requirements.txt
-├── start.bat               # Windows启动脚本
-├── FRONTEND_START_GUIDE.md # 前端启动说明
-└── README.md               # 项目说明
-```
+### Video Demonstration
 
-**1. 启动算法服务**
-```bash
-cd ITGen_web/web/algorithm_service
-pip install -r requirements.txt
-python app.py
-```
+[![](web/Cover.png)](https://youtu.be/jKcy4OORqPk)
 
-**2. 启动后端API服务**
-```bash
-cd ITGen_web/web/backend
-pip install -r requirements.txt
-python app.py
-```
+---
 
-**3. 启动前端应用**
-```bash
-cd ITGen_web/web/frontend
-npm install
-npm start
-```
-## 服务地址
+### About Our Work
 
-- **前端应用**: http://localhost:5173
-- **后端API**: http://localhost:5000
-- **算法服务**: http://localhost:8000
+#### IEGen
 
-## 系统架构
+GitHub: https://github.com/unknownhl/ITGen
 
-### 架构图
-```
-┌─────────────────┐    HTTP API    ┌─────────────────┐    Subprocess    ┌─────────────────┐
-│   前端应用       │ ──────────────▶│   后端API服务    │ ────────────────▶│   算法服务       │
-│   (React)       │                │   (Flask)       │                  │   (Flask)       │
-└─────────────────┘                └─────────────────┘                  └─────────────────┘
-                                                      │                                    │
-                                                      │                                    │
-                                                      ▼                                    ▼
-                                               ┌─────────────────┐                ┌─────────────────┐
-                                               │   任务管理       │                │   ITGen算法      │
-                                               │   WebSocket     │                │   (子进程调用)   │
-                                               └─────────────────┘                └─────────────────┘
-```
-
-### 调用流程
-1. **前端** → **后端**: 通过HTTP API发送请求
-2. **后端** → **算法服务**: 通过HTTP API转发请求
-3. **算法服务** → **ITGen**: 通过子进程调用ITGen算法
-4. **ITGen** → **算法服务**: 返回算法结果
-5. **算法服务** → **后端**: 返回处理结果
-6. **后端** → **前端**: 返回最终结果
-
-## 技术栈
-
-### 前端技术
-- **React 18** - 用户界面框架
-- **TypeScript** - 类型安全的JavaScript
-- **Ant Design** - UI组件库
-- **Axios** - HTTP客户端
-- **Socket.IO Client** - WebSocket客户端
-
-### 后端技术
-- **Flask** - Python Web框架
-- **Flask-CORS** - 跨域支持
-- **Flask-SocketIO** - WebSocket支持
-- **Requests** - HTTP客户端
-
-### 算法服务技术
-- **Flask** - 算法服务框架
-- **Subprocess** - 子进程调用ITGen算法
-- **ITGen算法** - 对抗样本生成核心（通过子进程调用）
-- **PyTorch** - 深度学习框架（ITGen依赖）
-- **Transformers** - 预训练模型库（ITGen依赖）
-
-## 核心功能
-
-### 1. 模型管理
-- 支持CodeBERT、GraphCodeBERT、CodeGPT等主流模型
-- 提供标准化的预测接口
-- 模型测试和验证功能
-
-### 2. 对抗攻击
-- 基于ITGen核心算法
-- 支持ALERT、Beam Attack等基线方法
-- 用户自定义攻击预算
-- 实时任务状态监控
-
-### 3. 鲁棒性评估
-- 攻击成功率（ASR）
-- 平均模型调用次数（AMI）
-- 平均运行时间（ART）
-- 可视化结果展示
-
-### 4. 对抗性微调
-- 使用对抗样本进行模型微调
-- 微调前后性能对比
-- 训练过程可视化
-
-### 5. 批量测试
-- 多模型批量测试
-- 多任务支持
-- 与基线方法自动对比
-
-## 部署说明
-
-### 生产环境部署
-
-#### 单独部署服务
-
-**前端部署**:
-```bash
-cd ITGen_web/web/frontend
-npm install
-npm run build
-# 使用nginx或其他web服务器托管build目录
-```
-
-**后端部署**:
-```bash
-cd ITGen_web/web/backend
-pip install -r requirements.txt
-python app.py
-```
-
-**算法服务部署**:
-```bash
-cd ITGen_web/web/algorithm_service
-pip install -r requirements.txt
-python app.py
-```
-
-## 开发指南
-
-### 前端开发
-```bash
-cd ITGen_web/web/frontend
-npm install
-npm start
-```
-
-### 后端开发
-```bash
-cd ITGen_web/web/backend
-pip install -r requirements.txt
-python app.py
-```
-
-### 算法服务开发
-```bash
-cd ITGen_web/web/algorithm_service
-pip install -r requirements.txt
-python app.py
-```
-
-## 故障排除
-
-### 常见问题
-
-1. **路径问题**
-   - 确保ITGen文件夹在ITGen_web根目录下
-   - 检查算法服务的ITGen路径配置
-
-2. **端口冲突**
-   - 检查端口3000、5000、8000是否被占用
-   - 修改各服务的端口配置
-
-3. **依赖安装失败**
-   - 检查网络连接
-   - 使用国内镜像源
-
-4. **服务启动失败**
-   - 检查Python和Node.js版本
-   - 查看控制台错误信息
-   - 确保所有依赖已正确安装
-
-## 独立运行说明
-
-### 前端独立运行
-- **功能**: 显示完整的Web界面，包括所有页面和组件
-- **限制**: 无法执行实际的计算任务（需要后端和算法服务）
-- **启动**:  `cd web/frontend && npm start`
-- **访问**: http://localhost:5173
-
-### 后端独立运行
-- **功能**: 提供完整的API服务，包括任务管理、WebSocket通信
-- **容错**: 算法服务不可用时自动使用模拟数据
-- **启动**: `cd web/backend && python app.py`
-- **访问**: http://localhost:5000
-
-### 算法服务独立运行
-- **功能**: 提供算法计算服务，包括ITGen攻击、模型测试等
-- **容错**: ITGen模块不可用时使用模拟实现
-- **启动**:  `cd web/algorithm_service && python app.py`
-- **访问**: http://localhost:8000
-
-### 组合运行
-- **完整功能**: 三个服务同时运行，提供完整功能
-- **启动**:  `start.bat`/`start.sh`
-- **容错**: 任一服务不可用时，其他服务仍可正常运行
+Cite: @inproceedings{huang2025iterative,
+  title={Iterative Generation of Adversarial Example for Deep Code Models},
+  author={Huang, Li and Sun, Weifeng and Yan, Meng},
+  booktitle={2025 IEEE/ACM 47th International Conference on Software Engineering (ICSE)},
+  pages={623--623},
+  year={2025},
+  organization={IEEE Computer Society}
+}
