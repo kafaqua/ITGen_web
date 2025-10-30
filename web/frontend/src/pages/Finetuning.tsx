@@ -37,7 +37,8 @@ import {
   BarChartOutlined,
   ClockCircleOutlined,
   InfoCircleOutlined,
-  EyeOutlined
+  EyeOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api';
@@ -108,6 +109,8 @@ interface FinetuningResult {
   overall_improvement: number;
   model_path: string;
   training_logs: any[];
+  training_samples: number;
+  evaluation_samples: number;
 }
 
 const Finetuning: React.FC = () => {
@@ -128,7 +131,6 @@ const Finetuning: React.FC = () => {
 
   useEffect(() => {
     fetchModels();
-    initializeTrainingData();
   }, []);
 
   const fetchModels = async () => {
@@ -142,72 +144,90 @@ const Finetuning: React.FC = () => {
     }
   };
 
-  const initializeTrainingData = () => {
-    const defaultData: TrainingData[] = [
-      {
-        id: 'sample_1',
-        original_code: 'def hello_world():\n    return "Hello, World!"',
-        adversarial_code: 'def hello_world():\n    return "Hi, World!"',
-        label: 'function_generation',
-        difficulty: 'easy',
-        status: 'pending'
-      },
-      {
-        id: 'sample_2',
-        original_code: 'class Calculator:\n    def add(self, a, b):\n        return a + b',
-        adversarial_code: 'class Calculator:\n    def add(self, x, y):\n        return x + y',
-        label: 'class_generation',
-        difficulty: 'medium',
-        status: 'pending'
-      },
-      {
-        id: 'sample_3',
-        original_code: 'if condition:\n    do_something()',
-        adversarial_code: 'if condition is True:\n    do_something()',
-        label: 'control_flow',
-        difficulty: 'hard',
-        status: 'pending'
-      }
-    ];
-    setTrainingData(defaultData);
-  };
-
   const handleFileUpload = async (info: any) => {
+    console.log('Upload onChange triggered:', info);
     const { file } = info;
-    // 需先选择任务类型
-    const taskType = form.getFieldValue('task_type');
-    if (!taskType) {
-      message.warning('请先选择任务类型再上传训练数据');
+    
+    // 获取实际的文件对象
+    const actualFile = file.originFileObj || file;
+    
+    if (!actualFile) {
+      console.error('No file object found');
       return;
     }
 
-    // 上传到后端，携带任务类型与用途
-    if (file && file.originFileObj) {
-      try {
-        await ApiService.uploadFile(file.originFileObj as File, {
-          fileType: 'dataset',
-          purpose: 'finetuning',
-          taskType: taskType,
-          datasetName: file.name,
-        });
-      } catch (e) {
-        console.warn('训练数据上传失败，继续本地解析:', e);
-      }
+    // 需先选择任务类型
+    const taskType = form.getFieldValue('task_type');
+    if (!taskType) {
+      message.warning('请先选择任务类型再上传数据集');
+      return;
     }
 
-    // 本地解析
-    if (file && file.originFileObj) {
-      setUploadedFile(file);
-      message.success(`${file.name} 文件已选择并提交`);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const content = e.target?.result as string;
+    console.log('Processing file:', actualFile.name, 'Type:', actualFile.type);
+    
+    // 设置上传的文件信息
+    setUploadedFile(file);
+
+    // 实际上传到后端（可选）
+    try {
+      await ApiService.uploadFile(actualFile, {
+        fileType: 'dataset',
+        purpose: 'finetuning',
+        taskType: taskType,
+        datasetName: actualFile.name,
+      });
+      console.log('File uploaded to backend successfully');
+    } catch (e) {
+      // 即使上传失败，也允许继续在前端解析以演示
+      console.warn('数据集上传失败，继续本地解析:', e);
+    }
+
+    // 本地解析文件内容
+    message.loading({ content: '正在解析数据集...', key: 'parsing' });
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        console.log('File content loaded, length:', content.length);
+        
+        // 根据文件类型解析
+        let data: TrainingData[] = [];
+        
+        if (actualFile.name.endsWith('.json')) {
+          // JSON格式
+          const jsonData = JSON.parse(content);
+          data = Array.isArray(jsonData) ? jsonData.map((item, index) => ({
+            id: `train_${index + 1}`,
+            original_code: item.original_code || item.code || JSON.stringify(item),
+            adversarial_code: item.adversarial_code || '',
+            label: item.label || 'unknown',
+            difficulty: (item.difficulty || 'medium') as 'easy' | 'medium' | 'hard',
+            status: 'pending' as const
+          })) : [];
+        } else if (actualFile.name.endsWith('.csv')) {
+          // CSV格式
           const lines = content.split('\n').filter(line => line.trim());
-          const data: TrainingData[] = lines.map((line, index) => {
+          // 跳过表头
+          const dataLines = lines.slice(1);
+          data = dataLines.map((line, index) => {
+            const parts = line.split(',');
+            return {
+              id: `train_${index + 1}`,
+              original_code: parts[0] ? parts[0].trim() : '',
+              adversarial_code: parts[1] ? parts[1].trim() : '',
+              label: parts[2] ? parts[2].trim() : 'unknown',
+              difficulty: 'medium' as const,
+              status: 'pending' as const
+            };
+          });
+        } else {
+          // TXT格式 - 每行格式：原始代码|对抗代码|标签
+          const lines = content.split('\n').filter(line => line.trim());
+          data = lines.map((line, index) => {
             const parts = line.split('|');
             return {
-              id: `uploaded_${index + 1}`,
+              id: `train_${index + 1}`,
               original_code: parts[0] || '',
               adversarial_code: parts[1] || '',
               label: parts[2] || 'unknown',
@@ -215,18 +235,38 @@ const Finetuning: React.FC = () => {
               status: 'pending' as const
             };
           });
-          setTrainingData(data);
-        } catch (error) {
-          message.error('文件解析失败');
         }
-      };
-      reader.readAsText(file.originFileObj);
-    }
+        
+        console.log('Parsed training data:', data.length);
+        
+        if (data.length === 0) {
+          message.error({ content: '数据集为空或格式不正确', key: 'parsing' });
+          return;
+        }
+        
+        setTrainingData(data);
+        message.success({ 
+          content: `成功加载 ${data.length} 个训练样本`, 
+          key: 'parsing',
+          duration: 2
+        });
+      } catch (error) {
+        console.error('Parse error:', error);
+        message.error({ content: '数据集解析失败: ' + (error as Error).message, key: 'parsing' });
+      }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('FileReader error:', error);
+      message.error({ content: '文件读取失败', key: 'parsing' });
+    };
+    
+    reader.readAsText(actualFile);
   };
 
   const handleStartFinetuning = async (values: any) => {
     if (trainingData.length === 0) {
-      message.warning('请先上传训练数据');
+      message.warning('请先上传数据集');
       return;
     }
 
@@ -249,10 +289,22 @@ const Finetuning: React.FC = () => {
       
       setTrainingConfig(config);
       
-      const response = await ApiService.startFinetuning({
-        ...values,
-        training_data: trainingData
-      });
+      // 构造后端期望的请求格式
+      const requestData = {
+        model_name: values.model_name,
+        task_type: values.task_type,
+        dataset: uploadedFile ? uploadedFile.name : 'uploaded_dataset.txt',
+        attack_methods: values.attack_methods || ['itgen', 'alert'],
+        parameters: {
+          learning_rate: parseFloat(values.learning_rate) || 2e-5,
+          epochs: parseInt(values.epochs) || 3,
+          batch_size: parseInt(values.batch_size) || 16
+        }
+      };
+      
+      console.log('🚀 发送鲁棒性增强请求:', requestData);
+      
+      const response = await ApiService.startFinetuning(requestData);
       
       if (response.success) {
         const taskId = response.task_id;
@@ -261,8 +313,8 @@ const Finetuning: React.FC = () => {
         
         message.success('鲁棒性增强已启动');
         
-        // 模拟训练进度
-        simulateTraining(taskId);
+        // 开始轮询训练状态
+        pollFinetuningStatus(taskId);
       } else {
         message.error(response.error || '增强启动失败');
         setTrainingRunning(false);
@@ -274,6 +326,164 @@ const Finetuning: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 获取微调结果
+  const fetchFinetuningResults = async (taskId: string) => {
+    try {
+      console.log('📥 获取鲁棒性增强结果，taskId:', taskId);
+      const resultsResponse = await ApiService.getFinetuningResults(taskId);
+      
+      console.log('📦 后端返回的结果:', resultsResponse);
+      
+      if (resultsResponse.success && resultsResponse.result) {
+        const backendResult = resultsResponse.result;
+        
+        // 转换为前端使用的格式
+        const result: FinetuningResult = {
+          model_id: backendResult.task_id || taskId,
+          model_name: backendResult.model_name || '微调模型',
+          training_time: 0, // 后端未提供
+          final_loss: 0, // 后端未提供
+          
+          // 微调前性能（从old_metrics获取）
+          original_accuracy: 0, // 后端未提供
+          original_bleu_score: 0, // 后端未提供
+          original_asr: backendResult.old_metrics?.asr || 0,
+          original_ami: backendResult.old_metrics?.ami || 0,
+          original_art: backendResult.old_metrics?.art || 0,
+          
+          // 微调后性能（从new_metrics获取平均值或第一个方法的结果）
+          final_accuracy: 0, // 后端未提供
+          final_bleu_score: 0, // 后端未提供
+          final_asr: 0,
+          final_ami: 0,
+          final_art: 0,
+          
+          adversarial_accuracy: 0, // 后端未提供
+          adversarial_bleu_score: 0, // 后端未提供
+          
+          // 性能提升（从comparison计算）
+          accuracy_improvement: 0, // 后端未提供
+          bleu_improvement: 0, // 后端未提供
+          asr_improvement: 0,
+          ami_improvement: 0,
+          art_improvement: 0,
+          overall_improvement: 0,
+          
+          model_path: '', // 后端未提供
+          training_logs: [],
+          training_samples: backendResult.training_samples || 0,
+          evaluation_samples: 0
+        };
+        
+        // 计算新指标的平均值（如果有多个攻击方法）
+        if (backendResult.new_metrics) {
+          const methods = Object.keys(backendResult.new_metrics);
+          if (methods.length > 0) {
+            let totalASR = 0, totalAMI = 0, totalART = 0;
+            methods.forEach(method => {
+              totalASR += backendResult.new_metrics[method].asr || 0;
+              totalAMI += backendResult.new_metrics[method].ami || 0;
+              totalART += backendResult.new_metrics[method].art || 0;
+            });
+            result.final_asr = totalASR / methods.length;
+            result.final_ami = totalAMI / methods.length;
+            result.final_art = totalART / methods.length;
+          }
+        }
+        
+        // 从comparison计算improvement
+        if (backendResult.comparison) {
+          const methods = Object.keys(backendResult.comparison);
+          if (methods.length > 0) {
+            let totalASRChange = 0, totalAMIChange = 0, totalARTChange = 0;
+            methods.forEach(method => {
+              totalASRChange += backendResult.comparison[method].asr_change || 0;
+              totalAMIChange += backendResult.comparison[method].ami_change || 0;
+              totalARTChange += backendResult.comparison[method].art_change || 0;
+            });
+            result.asr_improvement = totalASRChange / methods.length;
+            result.ami_improvement = totalAMIChange / methods.length;
+            result.art_improvement = totalARTChange / methods.length;
+            result.overall_improvement = (Math.abs(result.asr_improvement) + Math.abs(result.ami_improvement) + Math.abs(result.art_improvement)) / 3;
+          }
+        }
+        
+        setFinetuningResult(result);
+        
+        // 存储完整的后端结果到sessionStorage，供结果页面使用
+        sessionStorage.setItem('finetuningResult', JSON.stringify({
+          result: backendResult,
+          config: trainingConfig,
+          taskId: currentTaskId
+        }));
+        
+        console.log('✅ 鲁棒性增强结果已设置:', result);
+        console.log('✅ 完整结果已存储到sessionStorage');
+      } else {
+        console.error('⚠️ 后端返回失败:', resultsResponse);
+        message.error('获取鲁棒性增强结果失败');
+      }
+    } catch (error) {
+      console.error('❌ 获取鲁棒性增强结果时出错:', error);
+      message.error('获取鲁棒性增强结果失败: ' + (error as Error).message);
+    }
+  };
+
+  // 轮询微调状态
+  const pollFinetuningStatus = async (taskId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const statusResponse = await ApiService.getFinetuningStatus(taskId);
+        
+        if (statusResponse.success) {
+          const status = statusResponse.status;
+          console.log('📊 微调状态:', status);
+          
+          // 更新进度信息
+          if (status.progress) {
+            setTrainingProgress({
+              current_epoch: status.progress.current_epoch || 0,
+              total_epochs: status.progress.total_epochs || 3,
+              current_step: status.progress.current_step || 0,
+              total_steps: status.progress.total_steps || 100,
+              loss: status.progress.loss || 0,
+              accuracy: status.progress.accuracy || 0,
+              learning_rate: status.progress.learning_rate || 2e-5,
+              eta: status.progress.eta || '计算中...'
+            });
+            setCurrentStep(Math.min(status.progress.current_epoch || 0, 3));
+          }
+          
+          setTaskStatus(status.message || '训练中...');
+          
+          // 检查是否完成
+          if (status.status === 'completed' || status.status === 'success') {
+            clearInterval(interval);
+            (window as any).finetuningInterval = null;
+            setTrainingRunning(false);
+            setTrainingComplete(true);
+            setTaskStatus('鲁棒性增强完成');
+            setCurrentStep(3);
+            
+            // 获取微调结果
+            fetchFinetuningResults(taskId);
+            message.success('鲁棒性增强完成');
+          } else if (status.status === 'failed' || status.status === 'error') {
+            clearInterval(interval);
+            (window as any).finetuningInterval = null;
+            setTrainingRunning(false);
+            setTaskStatus('鲁棒性增强失败');
+            message.error(status.error || '鲁棒性增强失败');
+          }
+        }
+      } catch (error) {
+        console.error('❌ 获取微调状态失败:', error);
+      }
+    }, 3000); // 每3秒轮询一次
+    
+    (window as any).finetuningInterval = interval;
   };
 
   const simulateTraining = (taskId: string) => {
@@ -321,13 +531,11 @@ const Finetuning: React.FC = () => {
   };
 
   const handleViewResult = () => {
+    // sessionStorage中的数据已在fetchFinetuningResults中设置，直接跳转即可
     if (finetuningResult) {
-      sessionStorage.setItem('finetuningResult', JSON.stringify({
-        result: finetuningResult,
-        config: trainingConfig,
-        taskId: currentTaskId
-      }));
       navigate('/finetuning/result');
+    } else {
+      message.warning('暂无可查看的结果');
     }
   };
 
@@ -383,7 +591,9 @@ const Finetuning: React.FC = () => {
       art_improvement: artImprovement,
       overall_improvement: overallImprovement,
       model_path: `/models/finetuned_${Date.now()}`,
-      training_logs: []
+      training_logs: [],
+      training_samples: trainingData.length,
+      evaluation_samples: 0
     };
     
     setFinetuningResult(result);
@@ -521,13 +731,13 @@ const Finetuning: React.FC = () => {
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
-                    name="model_id"
+                    name="model_name"
                     label="测试模型"
                     rules={[{ required: true, message: '请选择测试模型' }]}
                   >
                     <Select placeholder="请选择测试模型">
                       {models.map(model => (
-                        <Option key={model.id} value={model.id}>
+                        <Option key={model.model_name} value={model.model_name}>
                           {model.name}
                         </Option>
                       ))}
@@ -539,13 +749,32 @@ const Finetuning: React.FC = () => {
                     name="task_type"
                     label="任务类型"
                     rules={[{ required: true, message: '请选择任务类型' }]}
-                    initialValue="clone_detection"
+                    initialValue="clone-detection"
                   >
                     <Select placeholder="请选择任务类型">
-                      <Option value="clone_detection">克隆检测</Option>
-                      <Option value="vulnerability_detection">漏洞检测</Option>
-                      <Option value="code_summarization">代码摘要</Option>
-                      <Option value="code_generation">代码生成</Option>
+                      <Option value="clone-detection">克隆检测</Option>
+                      <Option value="vulnerability-detection">漏洞检测</Option>
+                      <Option value="code-summarization">代码摘要</Option>
+                      <Option value="code-generation">代码生成</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="attack_methods"
+                    label="攻击方法"
+                    rules={[{ required: true, message: '请选择攻击方法' }]}
+                    initialValue={['itgen', 'alert']}
+                  >
+                    <Select 
+                      mode="multiple" 
+                      placeholder="请选择攻击方法"
+                      maxTagCount="responsive"
+                    >
+                      <Option value="itgen">ITGen</Option>
+                      <Option value="alert">ALERT</Option>
+                      <Option value="beam_attack">Beam Attack</Option>
+                      <Option value="mhm">MHM</Option>
                     </Select>
                   </Form.Item>
                 </Col>
@@ -611,34 +840,68 @@ const Finetuning: React.FC = () => {
                 </Col>
               </Row>
 
-              <Divider orientation="left">训练数据</Divider>
+              <Divider orientation="left">数据集</Divider>
 
               <Form.Item label="数据格式">
                 <Text type="secondary">每行格式：<Text code>原始代码|对抗代码|标签</Text></Text>
               </Form.Item>
 
-              <Form.Item label="上传训练数据">
-                <Upload
-                  accept=".txt,.csv,.json"
-                  beforeUpload={() => false}
-                  onChange={handleFileUpload}
-                  showUploadList={false}
-                >
-                  <Button icon={<UploadOutlined />}>
-                    选择文件
-                  </Button>
-                </Upload>
-                {uploadedFile && (
-                  <div style={{ marginTop: '8px' }}>
-                    <Text type="success">
-                      <UploadOutlined /> {uploadedFile.name}
-                    </Text>
-                    <Text type="secondary" style={{ marginLeft: '8px' }}>
-                      ({trainingData.length} 个训练样本)
-                    </Text>
-                  </div>
-                )}
+              <Form.Item 
+                label="上传数据集"
+                tooltip="请先选择任务类型，然后上传数据集文件"
+              >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Upload
+                    accept=".txt,.csv,.json"
+                    beforeUpload={(file) => {
+                      console.log('beforeUpload called with file:', file.name);
+                      return false; // 阻止自动上传，由onChange手动处理
+                    }}
+                    onChange={handleFileUpload}
+                    showUploadList={false}
+                    maxCount={1}
+                  >
+                    <Button 
+                      icon={<UploadOutlined />}
+                      size="large"
+                      type={trainingData.length === 0 ? 'primary' : 'default'}
+                    >
+                      {trainingData.length === 0 ? '选择数据集文件' : '重新选择数据集'}
+                    </Button>
+                  </Upload>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    点击按钮选择文件，支持 .txt, .csv, .json 格式
+                  </Text>
+                  {uploadedFile && (
+                    <Alert
+                      message="数据集已加载"
+                      description={
+                        <div>
+                          <Text strong>
+                            <FileTextOutlined /> {uploadedFile.name}
+                          </Text>
+                          <br />
+                          <Text type="secondary">
+                            共加载 {trainingData.length} 个训练样本
+                          </Text>
+                        </div>
+                      }
+                      type="success"
+                      showIcon
+                    />
+                  )}
+                </Space>
               </Form.Item>
+
+              {trainingData.length === 0 && (
+                <Alert
+                  message="请先上传数据集"
+                  description="请在上方选择并上传包含训练样本的数据集文件（支持.txt, .csv, .json格式）"
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: '16px' }}
+                />
+              )}
 
               <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
                 <Space size="large">

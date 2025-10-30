@@ -74,7 +74,7 @@ const Sidebar: React.FC = () => {
             深度代码模型
         </div>
         <div style={{ marginTop: '8px', fontWeight: 'bold', color: '#1890ff' }}>
-            鲁棒性评估与增强平台
+            攻击与增强工具
         </div>
       </div>
       <Menu

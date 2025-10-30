@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://192.168.3.115:5000';
 
 class ApiService {
   private api: AxiosInstance;
@@ -8,7 +8,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000,
+      timeout: 120000, // 增加到120秒，适应长时间运行的任务
       headers: {
         'Content-Type': 'application/json',
       },
@@ -48,7 +48,7 @@ class ApiService {
     success: boolean;
     data: Array<{
       id: string;
-      name: string;
+      model_name: string;
       description: string;
       model_path: string;
       tokenizer_path: string;
@@ -64,7 +64,7 @@ class ApiService {
   }
 
   async addModel(modelData: {
-    name: string;
+    model_name: string;
     model_type: string; // 前端必填：模型类型
     description: string;
     model_path: string;
@@ -88,7 +88,10 @@ class ApiService {
 
   // 对抗攻击API
   async startAttack(attackData: any) {
-    const response = await this.api.post('/api/attack/start', attackData);
+    // 攻击启动只需要短超时，因为只是创建任务，不等待完成
+    const response = await this.api.post('/api/attack/start', attackData, {
+      timeout: 60000 // 60秒足够启动任务
+    });
     return response.data;
   }
 
@@ -168,7 +171,7 @@ class ApiService {
     return response.data;
   }
 
-  // 批量测试结果API（如果需要）
+  // 批量测试结果API
   async getBatchTestingResults(taskId: string) {
     const response = await this.api.get(`/api/batch-testing/results/${taskId}`);
     return response.data;

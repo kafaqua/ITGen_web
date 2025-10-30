@@ -31,7 +31,8 @@ import {
   BarChartOutlined,
   ClockCircleOutlined,
   InfoCircleOutlined,
-  EyeOutlined
+  EyeOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/api';
@@ -53,7 +54,7 @@ interface TestConfig {
   base_model: string;
   max_queries: number;
   timeout: number;
-  language: string;
+  attack_method: string;
   attack_strategy: string;
 }
 
@@ -101,7 +102,14 @@ const Evaluation: React.FC = () => {
 
   useEffect(() => {
     fetchModels();
-    initializeTestData();
+    
+    // 组件卸载时清理定时器
+    return () => {
+      if ((window as any).evaluationInterval) {
+        clearInterval((window as any).evaluationInterval);
+        (window as any).evaluationInterval = null;
+      }
+    };
   }, []);
 
   const fetchModels = async () => {
@@ -115,79 +123,121 @@ const Evaluation: React.FC = () => {
     }
   };
 
-  const initializeTestData = () => {
-    const defaultData: TestData[] = [
-      {
-        id: 'sample_1',
-        code_sample: 'def hello_world():\n    return "Hello, World!"',
-        label: 'function_generation',
-        difficulty: 'easy',
-        status: 'pending'
-      },
-      {
-        id: 'sample_2',
-        code_sample: 'class Calculator:\n    def add(self, a, b):\n        return a + b',
-        label: 'class_generation',
-        difficulty: 'medium',
-        status: 'pending'
-      },
-      {
-        id: 'sample_3',
-        code_sample: 'if condition:\n    do_something()',
-        label: 'control_flow',
-        difficulty: 'hard',
-        status: 'pending'
-      }
-    ];
-    setTestData(defaultData);
-  };
-
   const handleFileUpload = async (info: any) => {
+    console.log('Upload onChange triggered:', info);
     const { file } = info;
+    
+    // 获取实际的文件对象
+    const actualFile = file.originFileObj || file;
+    
+    if (!actualFile) {
+      console.error('No file object found');
+      return;
+    }
+
+    // 需先选择任务类型
     const taskType = form.getFieldValue('task_type');
     if (!taskType) {
       message.warning('请先选择任务类型再上传测试数据');
       return;
     }
 
-    if (file && file.originFileObj) {
-      try {
-        await ApiService.uploadFile(file.originFileObj as File, {
-          fileType: 'dataset',
-          purpose: 'evaluation',
-          taskType: taskType,
-          datasetName: file.name,
-        });
-      } catch (e) {
-        console.warn('测试数据上传失败，继续本地解析:', e);
-      }
+    console.log('Processing file:', actualFile.name, 'Type:', actualFile.type);
+    
+    // 设置上传的文件信息
+    setUploadedFile(file);
+
+    // 实际上传到后端（可选）
+    try {
+      await ApiService.uploadFile(actualFile, {
+        fileType: 'dataset',
+        purpose: 'evaluation',
+        taskType: taskType,
+        datasetName: actualFile.name,
+      });
+      console.log('File uploaded to backend successfully');
+    } catch (e) {
+      // 即使上传失败，也允许继续在前端解析以演示
+      console.warn('数据集上传失败，继续本地解析:', e);
     }
 
-    if (file && file.originFileObj) {
-      setUploadedFile(file);
-      message.success(`${file.name} 文件已选择并提交`);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const content = e.target?.result as string;
+    // 本地解析文件内容
+    message.loading({ content: '正在解析数据集...', key: 'parsing' });
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        console.log('File content loaded, length:', content.length);
+        
+        // 根据文件类型解析
+        let data: TestData[] = [];
+        
+        if (actualFile.name.endsWith('.json')) {
+          // JSON格式
+          const jsonData = JSON.parse(content);
+          data = Array.isArray(jsonData) ? jsonData.map((item, index) => ({
+            id: `sample_${index + 1}`,
+            code_sample: item.code || item.code_sample || JSON.stringify(item),
+            label: item.label || 'unknown',
+            difficulty: (item.difficulty || 'medium') as 'easy' | 'medium' | 'hard',
+            status: 'pending' as const
+          })) : [];
+        } else if (actualFile.name.endsWith('.csv')) {
+          // CSV格式
           const lines = content.split('\n').filter(line => line.trim());
-          const data: TestData[] = lines.map((line, index) => {
+          // 跳过表头
+          const dataLines = lines.slice(1);
+          data = dataLines.map((line, index) => {
+            const parts = line.split(',');
+            return {
+              id: `sample_${index + 1}`,
+              code_sample: parts[0] ? parts[0].trim() : line.trim(),
+              label: parts[1] ? parts[1].trim() : 'unknown',
+              difficulty: 'medium' as const,
+              status: 'pending' as const
+            };
+          });
+        } else {
+          // TXT格式 - 每行格式：代码样本|标签
+          const lines = content.split('\n').filter(line => line.trim());
+          data = lines.map((line, index) => {
             const parts = line.split('|');
             return {
-              id: `uploaded_${index + 1}`,
+              id: `sample_${index + 1}`,
               code_sample: parts[0] || '',
               label: parts[1] || 'unknown',
               difficulty: 'medium' as const,
               status: 'pending' as const
             };
           });
-          setTestData(data);
-        } catch (error) {
-          message.error('文件解析失败');
         }
-      };
-      reader.readAsText(file.originFileObj);
-    }
+        
+        console.log('Parsed test data:', data.length);
+        
+        if (data.length === 0) {
+          message.error({ content: '数据集为空或格式不正确', key: 'parsing' });
+          return;
+        }
+        
+        setTestData(data);
+        message.success({ 
+          content: `成功加载 ${data.length} 个测试样本`, 
+          key: 'parsing',
+          duration: 2
+        });
+      } catch (error) {
+        console.error('Parse error:', error);
+        message.error({ content: '数据集解析失败: ' + (error as Error).message, key: 'parsing' });
+      }
+    };
+    
+    reader.onerror = (error) => {
+      console.error('FileReader error:', error);
+      message.error({ content: '文件读取失败', key: 'parsing' });
+    };
+    
+    reader.readAsText(actualFile);
   };
 
   const handleStartTest = async (values: any) => {
@@ -196,9 +246,20 @@ const Evaluation: React.FC = () => {
       return;
     }
 
+    // 清除上一次的轮询定时器
+    if ((window as any).evaluationInterval) {
+      clearInterval((window as any).evaluationInterval);
+      (window as any).evaluationInterval = null;
+    }
+
+    // 清除上一次的测试结果
+    setEvaluationResult(null);
+    setTestProgress(null);
+    setTestComplete(false);
+    setCurrentStep(0);
+
     setLoading(true);
     setTestRunning(true);
-    setCurrentStep(0);
     
     try {
       const config: TestConfig = {
@@ -206,7 +267,7 @@ const Evaluation: React.FC = () => {
         base_model: values.base_model,
         max_queries: values.max_queries,
         timeout: values.timeout,
-        language: values.language,
+        attack_method: values.attack_method,
         attack_strategy: values.attack_strategy
       };
       
@@ -224,7 +285,8 @@ const Evaluation: React.FC = () => {
         
         message.success('安全测试已启动');
         
-        simulateTest(taskId);
+        // 开始轮询任务状态
+        pollEvaluationStatus(taskId);
       } else {
         message.error(response.error || '测试启动失败');
         setTestRunning(false);
@@ -238,90 +300,174 @@ const Evaluation: React.FC = () => {
     }
   };
 
-  const simulateTest = (taskId: string) => {
-    let sample = 0;
-    let iteration = 0;
-    const totalSamples = testData.length;
-    const maxIterations = testConfig?.max_queries || 200;
+  const pollEvaluationStatus = async (taskId: string) => {
+    let errorCount = 0;
+    const maxErrors = 3; // 最大连续错误次数
     
-    const interval = setInterval(() => {
-      iteration += 10;
-      if (iteration > maxIterations) {
-        sample += 1;
-        iteration = 0;
-        setCurrentStep(Math.min(sample, 3));
-      }
-      
-      const progress: TestProgress = {
-        current_sample: sample,
-        total_samples: totalSamples,
-        current_iteration: iteration,
-        max_iterations: maxIterations,
-        asr: Math.min(0.7, 0.2 + (sample * 0.05)),
-        ami: 50 + Math.random() * 50,
-        art: 2.0 + Math.random() * 2.0,
-        eta: `${Math.max(0, (totalSamples - sample) * 2)}分钟`
-      };
-      
-      setTestProgress(progress);
-      setTaskStatus(`测试中 - 样本 ${sample + 1}/${totalSamples}, 迭代 ${iteration}/${maxIterations}`);
-      
-      if (sample >= totalSamples) {
-        clearInterval(interval);
-        setTaskStatus('安全测试完成');
-        setTestRunning(false);
-        setTestComplete(true);
-        setCurrentStep(3);
+    const interval = setInterval(async () => {
+      try {
+        console.log('📡 轮询安全测试状态，taskId:', taskId);
+        const statusResponse = await ApiService.getEvaluationStatus(taskId);
         
-        setTimeout(() => {
-          generateTestResult();
-        }, 1000);
+        // 重置错误计数
+        errorCount = 0;
+        
+        console.log('📦 状态响应:', statusResponse);
+        
+        if (statusResponse.success) {
+          const status = statusResponse.status;
+          
+          // 更新进度信息
+          if (status.progress) {
+            const progress: TestProgress = {
+              current_sample: status.progress.current_sample || 0,
+              total_samples: status.progress.total_samples || testData.length,
+              current_iteration: status.progress.current_iteration || 0,
+              max_iterations: status.progress.max_iterations || 10,
+              asr: status.progress.asr || 0,
+              ami: status.progress.ami || 0,
+              art: status.progress.art || 0,
+              eta: status.progress.eta || '计算中...'
+            };
+            setTestProgress(progress);
+            setCurrentStep(Math.min(Math.floor((progress.current_sample / progress.total_samples) * 3), 3));
+          }
+          
+          // 更新状态消息
+          if (status.message) {
+            setTaskStatus(status.message);
+          }
+          
+          // 检查是否完成
+          if (status.status === 'completed' || status.status === 'success') {
+            console.log('✅ 安全测试完成');
+            clearInterval(interval);
+            (window as any).evaluationInterval = null;
+            setTaskStatus('安全测试完成');
+            setTestRunning(false);
+            setTestComplete(true);
+            setCurrentStep(3);
+            
+            // 使用 report_id 获取测试结果（如果有），否则使用 task_id
+            const reportId = status.report_id || status.result?.report_id || taskId;
+            console.log('📊 使用ID获取结果:', reportId);
+            console.log('  - report_id from status:', status.report_id);
+            console.log('  - report_id from result:', status.result?.report_id);
+            console.log('  - 最终使用:', reportId);
+            
+            // 获取测试结果
+            fetchEvaluationResults(reportId);
+            message.success('安全测试完成');
+          } else if (status.status === 'failed' || status.status === 'error') {
+            console.error('❌ 安全测试失败');
+            clearInterval(interval);
+            (window as any).evaluationInterval = null;
+            setTestRunning(false);
+            setTaskStatus('安全测试失败');
+            message.error(status.error || '安全测试失败');
+          }
+        } else {
+          console.warn('⚠️ 状态响应未成功:', statusResponse);
+        }
+      } catch (error: any) {
+        errorCount++;
+        console.error(`❌ 轮询状态时出错 (${errorCount}/${maxErrors}):`, error);
+        
+        // 如果是404错误，说明后端接口不存在
+        if (error?.response?.status === 404) {
+          console.warn('⚠️ 状态接口不存在 (404)，停止轮询');
+          clearInterval(interval);
+          (window as any).evaluationInterval = null;
+          
+          // 显示友好提示
+          message.warning('后端状态接口未实现，请等待测试完成后手动刷新查看结果');
+          
+          // 设置一个备用提示
+          setTaskStatus('测试执行中... (无法获取实时状态，请等待执行完成)');
+        } else if (errorCount >= maxErrors) {
+          // 连续失败多次，停止轮询
+          console.error(`❌ 连续失败 ${maxErrors} 次，停止轮询`);
+          clearInterval(interval);
+          (window as any).evaluationInterval = null;
+          setTestRunning(false);
+          setTaskStatus('无法获取测试状态');
+          message.error('无法连接到后端服务，请检查网络连接');
+        }
+        // 否则继续轮询
       }
-    }, 2000);
+    }, 2000); // 每2秒轮询一次
+    
+    // 存储interval ID以便停止时清除
+    (window as any).evaluationInterval = interval;
+  };
+
+  const fetchEvaluationResults = async (reportId: string) => {
+    try {
+      console.log('📥 获取安全测试结果，reportId:', reportId);
+      const resultsResponse = await ApiService.getEvaluationResults(reportId);
+      
+      console.log('📦 后端返回的结果:', resultsResponse);
+      
+      if (resultsResponse.success && resultsResponse.data) {
+        // 后端返回的完整评估报告数据
+        const reportData = resultsResponse.data;
+        
+        // 更新测试数据状态
+        const updatedTestData = testData.map(sample => ({
+          ...sample,
+          status: 'completed' as const
+        }));
+        setTestData(updatedTestData);
+        
+        // 设置评估结果（用于页面显示摘要）
+        const result: EvaluationResult = {
+          model_id: reportData.report_id || `tested_${Date.now()}`,
+          model_name: reportData.model_name || '测试模型',
+          test_time: 0, // 后端没有返回total_time，使用默认值
+          asr: reportData.summary_stats?.asr || 0,
+          ami: reportData.summary_stats?.ami || 0,
+          art: reportData.summary_stats?.art || 0,
+          total_samples: reportData.summary_stats?.total_samples || 0,
+          successful_attacks: reportData.summary_stats?.successful_attacks || 0,
+          failed_attacks: reportData.summary_stats?.failed_attacks || 0,
+          identifier_replacements: reportData.summary_stats?.avg_identifiers || 0,
+          test_logs: []
+        };
+        
+        setEvaluationResult(result);
+        
+        // 存储完整的评估报告到sessionStorage，供结果页面使用
+        sessionStorage.setItem('evaluationReport', JSON.stringify(reportData));
+        
+        console.log('✅ 评估结果已设置:', result);
+        console.log('✅ 完整报告已存储到sessionStorage');
+      } else {
+        console.error('⚠️ 后端返回失败:', resultsResponse);
+        message.error('获取测试结果失败');
+      }
+    } catch (error) {
+      console.error('❌ 获取测试结果时出错:', error);
+      message.error('获取测试结果失败: ' + (error as Error).message);
+    }
   };
 
   const handleViewResult = () => {
     if (evaluationResult) {
-      sessionStorage.setItem('evaluationResult', JSON.stringify({
-        result: evaluationResult,
-        config: testConfig,
-        taskId: currentTaskId
-      }));
+      // 评估报告已经在 fetchEvaluationResults 中存储到 sessionStorage
+      // 直接导航到结果页面
       navigate('/evaluation/result');
+    } else {
+      message.warning('暂无测试结果可查看');
     }
   };
 
-  const generateTestResult = () => {
-    const totalSamples = testData.length;
-    const successfulAttacks = Math.floor(totalSamples * (0.3 + Math.random() * 0.4));
-    const failedAttacks = totalSamples - successfulAttacks;
-    
-    // 更新所有样本状态为completed
-    const updatedTestData = testData.map(sample => ({
-      ...sample,
-      status: 'completed' as const
-    }));
-    setTestData(updatedTestData);
-    
-    const result: EvaluationResult = {
-      model_id: `tested_${Date.now()}`,
-      model_name: `测试模型_${new Date().toLocaleDateString()}`,
-      test_time: Math.floor(Math.random() * 1800) + 600,
-      asr: successfulAttacks / totalSamples,
-      ami: 50 + Math.random() * 100,
-      art: 2.0 + Math.random() * 3.0,
-      total_samples: totalSamples,
-      successful_attacks: successfulAttacks,
-      failed_attacks: failedAttacks,
-      identifier_replacements: Math.floor(Math.random() * 20) + 5,
-      test_logs: []
-    };
-    
-    setEvaluationResult(result);
-    message.success('安全测试完成');
-  };
-
   const handleStopTest = () => {
+    // 清除轮询定时器
+    if ((window as any).evaluationInterval) {
+      clearInterval((window as any).evaluationInterval);
+      (window as any).evaluationInterval = null;
+    }
+    
     setTestRunning(false);
     setTaskStatus('');
     setCurrentTaskId(null);
@@ -353,38 +499,6 @@ const Evaluation: React.FC = () => {
     return colors[status as keyof typeof colors];
   };
 
-  const handleViewSampleResult = (sample: TestData) => {
-    // 生成该样本的详细测试结果
-    const sampleResult = {
-      sample_id: sample.id,
-      code_sample: sample.code_sample,
-      label: sample.label,
-      difficulty: sample.difficulty,
-      original_code: sample.code_sample,
-      adversarial_code: generateAdversarialCode(sample.code_sample),
-      attack_success: Math.random() > 0.5,
-      queries_used: Math.floor(Math.random() * 150) + 50,
-      time_cost: (Math.random() * 4 + 1).toFixed(2),
-      identifier_replacements: [
-        { original: 'function', adversarial: 'func', line: 1 },
-        { original: 'variable', adversarial: 'var', line: 2 }
-      ]
-    };
-    
-    sessionStorage.setItem('evaluationSampleResult', JSON.stringify({
-      result: sampleResult,
-      config: testConfig,
-      taskId: currentTaskId
-    }));
-    navigate('/evaluation/result');
-  };
-
-  const generateAdversarialCode = (originalCode: string): string => {
-    // 简单的代码变换示例
-    return originalCode
-      .replace(/def\s+(\w+)/g, 'def $1_modified')
-      .replace(/(\w+)\s*=\s*/g, '$1_new = ');
-  };
 
   const testSteps = [
     {
@@ -426,13 +540,13 @@ const Evaluation: React.FC = () => {
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
-                    name="model_id"
+                    name="model_name"
                     label="被测模型"
                     rules={[{ required: true, message: '请选择被测模型' }]}
                   >
                     <Select placeholder="请选择被测模型">
                       {models.map(model => (
-                        <Option key={model.id} value={model.id}>
+                        <Option key={model.model_name} value={model.model_name}>
                           {model.name}
                         </Option>
                       ))}
@@ -444,13 +558,13 @@ const Evaluation: React.FC = () => {
                     name="task_type"
                     label="任务类型"
                     rules={[{ required: true, message: '请选择任务类型' }]}
-                    initialValue="clone_detection"
+                    initialValue="clone-detection"
                   >
                     <Select placeholder="请选择任务类型">
-                      <Option value="clone_detection">克隆检测</Option>
-                      <Option value="vulnerability_detection">漏洞检测</Option>
-                      <Option value="code_summarization">代码摘要</Option>
-                      <Option value="code_generation">代码生成</Option>
+                      <Option value="clone-detection">克隆检测</Option>
+                      <Option value="vulnerability-detection">漏洞检测</Option>
+                      <Option value="code-summarization">代码摘要</Option>
+                      <Option value="code-generation">代码生成</Option>
                     </Select>
                   </Form.Item>
                 </Col>
@@ -477,14 +591,14 @@ const Evaluation: React.FC = () => {
                 </Col>
                 <Col span={8}>
                   <Form.Item
-                    name="language"
-                    label="编程语言"
-                    initialValue="python"
+                    name="attack_method"
+                    label="攻击方法"
+                    initialValue="itgen"
                   >
-                    <Select placeholder="请选择编程语言">
-                      <Option value="python">Python</Option>
-                      <Option value="java">Java</Option>
-                      <Option value="c">C/C++</Option>
+                    <Select placeholder="请选择攻击方法">
+                      <Option value="itgen">ITGen</Option>
+                      <Option value="alert">ALERT</Option>
+                      <Option value="beam_attack">Beam Attack</Option>
                     </Select>
                   </Form.Item>
                 </Col>
@@ -515,57 +629,87 @@ const Evaluation: React.FC = () => {
                 </Col>
               </Row>
 
-              <Divider orientation="left">测试数据</Divider>
+              <Divider orientation="left">数据集</Divider>
 
-              <Form.Item label="数据格式">
-                <Text type="secondary">每行格式：<Text code>代码样本|标签</Text></Text>
-              </Form.Item>
-
-              <Form.Item label="上传测试代码集">
-                <Upload
-                  accept=".txt,.csv,.json"
-                  beforeUpload={() => false}
-                  onChange={handleFileUpload}
-                  showUploadList={false}
-                >
-                  <Button icon={<UploadOutlined />}>
-                    选择文件
-                  </Button>
-                </Upload>
-                {uploadedFile && (
-                  <div style={{ marginTop: '8px' }}>
-                    <Text type="success">
-                      <UploadOutlined /> {uploadedFile.name}
-                    </Text>
-                    <Text type="secondary" style={{ marginLeft: '8px' }}>
-                      ({testData.length} 个测试样本)
-                    </Text>
-                  </div>
-                )}
+              <Form.Item 
+                label="上传数据集"
+                tooltip="请先选择任务类型，然后上传数据集文件"
+              >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Upload
+                    accept=".txt,.csv,.json"
+                    beforeUpload={(file) => {
+                      console.log('beforeUpload called with file:', file.name);
+                      return false; // 阻止自动上传，由onChange手动处理
+                    }}
+                    onChange={handleFileUpload}
+                    showUploadList={false}
+                    maxCount={1}
+                  >
+                    <Button 
+                      icon={<UploadOutlined />}
+                      size="large"
+                      type={testData.length === 0 ? 'primary' : 'default'}
+                    >
+                      {testData.length === 0 ? '选择数据集文件' : '重新选择数据集'}
+                    </Button>
+                  </Upload>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    点击按钮选择文件，支持 .txt, .csv, .json 格式
+                  </Text>
+                  {uploadedFile && (
+                    <Alert
+                      message="数据集已加载"
+                      description={
+                        <div>
+                          <Text strong>
+                            <FileTextOutlined /> {uploadedFile.name}
+                          </Text>
+                          <br />
+                          <Text type="secondary">
+                            共加载 {testData.length} 个测试用例
+                          </Text>
+                        </div>
+                      }
+                      type="success"
+                      showIcon
+                    />
+                  )}
+                </Space>
               </Form.Item>
 
               <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
-                <Space size="large">
-                  <Button 
-                    type="primary" 
-                    htmlType="submit"
-                    loading={loading}
-                    disabled={testRunning || testData.length === 0}
-                    icon={<PlayCircleOutlined />}
-                    size="large"
-                  >
-                    开始安全测试
-                  </Button>
-                  {testRunning && (
+                <Space size="large" direction="vertical" style={{ width: '100%' }}>
+                  {testData.length === 0 && !testRunning && (
+                    <Alert
+                      message="请先上传数据集"
+                      description="请在上方选择并上传包含测试用例的数据集文件（支持.txt, .csv, .json格式）"
+                      type="warning"
+                      showIcon
+                    />
+                  )}
+                  <Space size="large">
                     <Button 
-                      danger
-                      onClick={handleStopTest}
-                      icon={<StopOutlined />}
+                      type="primary" 
+                      htmlType="submit"
+                      loading={loading}
+                      disabled={testRunning || testData.length === 0}
+                      icon={<PlayCircleOutlined />}
                       size="large"
                     >
-                      停止测试
+                      开始安全测试
                     </Button>
-                  )}
+                    {testRunning && (
+                      <Button 
+                        danger
+                        onClick={handleStopTest}
+                        icon={<StopOutlined />}
+                        size="large"
+                      >
+                        停止测试
+                      </Button>
+                    )}
+                  </Space>
                 </Space>
               </Form.Item>
             </Form>
@@ -654,34 +798,31 @@ const Evaluation: React.FC = () => {
                 </div>
                 <div style={{ marginTop: '16px', textAlign: 'center' }}>
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                    <Text strong>已完成样本列表：</Text>
-                    {testData.filter(item => item.status === 'completed').map((sample, index) => (
-                      <Card key={sample.id} size="small" style={{ marginBottom: '8px' }}>
-                        <Row justify="space-between" align="middle">
-                          <Col span={16}>
-                            <div>
-                              <Text strong>{sample.label}</Text>
-                              <br />
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
-                                {sample.code_sample.substring(0, 30)}...
-                              </Text>
-                            </div>
-                          </Col>
-                          <Col span={8} style={{ textAlign: 'right' }}>
-                            <Button 
-                              type="link" 
-                              size="small"
-                              icon={<EyeOutlined />}
-                              onClick={() => handleViewSampleResult(sample)}
-                            >
-                              查看结果
-                            </Button>
-                          </Col>
-                        </Row>
-                      </Card>
-                    ))}
+                    <Text strong>已完成样本数：{testData.filter(item => item.status === 'completed').length}</Text>
                   </Space>
                 </div>
+                {evaluationResult && (
+                  <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <Button 
+                      type="primary" 
+                      icon={<EyeOutlined />}
+                      onClick={handleViewResult}
+                      size="large"
+                    >
+                      查看结果
+                    </Button>
+                  </div>
+                )}
+                {!evaluationResult && (
+                  <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <Alert
+                      message="结果加载中"
+                      description="正在获取测试报告，请稍候..."
+                      type="info"
+                      showIcon
+                    />
+                  </div>
+                )}
                 {currentTaskId && (
                   <div style={{ marginTop: '16px', fontSize: '12px', color: '#666', textAlign: 'center' }}>
                     任务ID: {currentTaskId}

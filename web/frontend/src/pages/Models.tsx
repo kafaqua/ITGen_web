@@ -29,7 +29,7 @@ const { Option } = Select;
 
 interface Model {
   id: string;
-  name: string;
+  model_name: string;
   model_type?: string;
   description: string;
   model_path: string;
@@ -121,8 +121,8 @@ const Models: React.FC = () => {
   const columns = [
     {
       title: '模型名称',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'model_name',
+      key: 'model_name',
       render: (text: string, record: Model) => (
         <Space>
           <span>{text}</span>
@@ -290,7 +290,7 @@ const Models: React.FC = () => {
           onFinish={handleAddModel}
         >
           <Form.Item
-            name="name"
+            name="model_name"
             label="模型名称"
             rules={[{ required: true, message: '请输入模型名称' }]}
           >

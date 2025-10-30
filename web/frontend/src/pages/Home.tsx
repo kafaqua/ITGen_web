@@ -84,10 +84,10 @@ const Home: React.FC = () => {
       {/* 欢迎区域 */}
       <div style={{ textAlign: 'center', marginBottom: '48px' }}>
         <Title level={1} style={{ marginBottom: '16px' }}>
-          深度代码模型鲁棒性评估与增强平台
+          深度代码模型攻击与增强工具
         </Title>
         <Paragraph style={{ fontSize: '16px', color: '#666', maxWidth: '800px', margin: '0 auto' }}>
-          基于ITGen算法的自动化平台，用于评估和提升深度代码模型在面对对抗攻击时的鲁棒性。
+          基于ITGen算法的自动化工具，用于评估和提升深度代码模型在面对对抗攻击时的鲁棒性。
           支持CodeBERT、GraphCodeBERT、CodeGPT等主流模型。
         </Paragraph>
         <Space size="large" style={{ marginTop: '24px' }}>

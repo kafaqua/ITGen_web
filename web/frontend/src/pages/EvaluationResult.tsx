@@ -6,15 +6,14 @@ import {
   Button,
   Typography,
   Statistic,
-  Progress,
   Descriptions,
-  Space,
   message,
   Tabs,
   Table,
   Tag,
   Divider,
-  Select
+  Select,
+  Space
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -24,13 +23,79 @@ import {
   CloseCircleOutlined,
   BarChartOutlined,
   LineChartOutlined,
-  PieChartOutlined
+  ClockCircleOutlined,
+  CodeOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
+
+// 根据后端实际返回格式定义接口
+interface EvaluationReport {
+  report_id: string;
+  model_name: string;
+  task_type: string;
+  attack_methods: string[];
+  evaluation_metrics: string[];
+  method_metrics: MethodMetrics;
+  summary_stats: SummaryStats;
+  sample_results: BackendSampleResult[];
+  generated_at: string;
+}
+
+interface MethodMetrics {
+  [method: string]: {
+    asr: number;
+    ami: number;
+    art: number;
+    avg_identifiers: number;
+    avg_program_length: number;
+    failed_attacks: number;
+    successful_attacks: number;
+    total_samples: number;
+  };
+}
+
+interface SummaryStats {
+  asr: number;
+  ami: number;
+  art: number;
+  avg_identifiers: number;
+  avg_program_length: number;
+  failed_attacks: number;
+  successful_attacks: number;
+  total_samples: number;
+}
+
+// 后端返回的sample_results格式（字段名带空格和大写）
+interface BackendSampleResult {
+  'Index': number;
+  'Original Code': string;
+  'Adversarial Code': string | null;
+  'Program Length': number;
+  'Identifier Num': number;
+  'Replaced Identifiers': string | null;
+  'Query Times': number;
+  'Time Cost': number;
+  'Type': string;
+  '_file_source'?: string;
+}
+
+// 前端使用的标准化格式
+interface SampleResult {
+  index: number;
+  original_code: string;
+  adversarial_code: string | null;
+  program_length: number;
+  identifier_num: number;
+  replaced_identifiers: string | null;
+  query_times: number;
+  time_cost: number;
+  attack_success: boolean;
+  type: string;
+}
 
 interface IdentifierReplacement {
   original: string;
@@ -38,68 +103,48 @@ interface IdentifierReplacement {
   line: number;
 }
 
-interface SampleResult {
-  sample_id: string;
-  code_sample: string;
-  label: string;
-  difficulty: string;
-  original_code: string;
-  adversarial_code: string;
-  attack_success: boolean;
-  queries_used: number;
-  time_cost: string;
-  identifier_replacements: IdentifierReplacement[];
-}
-
 const EvaluationResult: React.FC = () => {
   const navigate = useNavigate();
-  const [result, setResult] = useState<SampleResult | null>(null);
-  const [config, setConfig] = useState<any>(null);
-  const [taskId, setTaskId] = useState<string>('');
+  const [reportData, setReportData] = useState<EvaluationReport | null>(null);
+  const [selectedSample, setSelectedSample] = useState<SampleResult | null>(null);
   const [copiedType, setCopiedType] = useState<string>('');
   const [selectedView, setSelectedView] = useState<string>('side-by-side');
 
+  // 将后端返回的sample转换为前端使用的格式
+  const convertBackendSample = (backendSample: BackendSampleResult): SampleResult => {
+    return {
+      index: backendSample['Index'],
+      original_code: backendSample['Original Code'],
+      adversarial_code: backendSample['Adversarial Code'],
+      program_length: backendSample['Program Length'],
+      identifier_num: backendSample['Identifier Num'],
+      replaced_identifiers: backendSample['Replaced Identifiers'],
+      query_times: backendSample['Query Times'],
+      time_cost: backendSample['Time Cost'],
+      attack_success: backendSample['Adversarial Code'] !== null,
+      type: backendSample['Type']
+    };
+  };
+
   useEffect(() => {
-    const storedData = sessionStorage.getItem('evaluationSampleResult');
+    // 从sessionStorage获取评估报告数据
+    const storedData = sessionStorage.getItem('evaluationReport');
     if (storedData) {
       const data = JSON.parse(storedData);
-      setResult(data.result);
-      setConfig(data.config);
-      setTaskId(data.taskId);
+      console.log('📊 收到的报告数据:', data);
+      setReportData(data);
+      
+      // 转换并选择第一个成功的样本
+      if (data.sample_results && data.sample_results.length > 0) {
+        const convertedSamples = data.sample_results.map(convertBackendSample);
+        const firstSuccessSample = convertedSamples.find((s: SampleResult) => s.attack_success);
+        setSelectedSample(firstSuccessSample || convertedSamples[0] || null);
+      }
     } else {
-      // 使用模拟数据
-      const mockData = {
-        result: {
-          sample_id: 'sample_001',
-          code_sample: 'def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result',
-          label: 'function_generation',
-          difficulty: 'medium',
-          original_code: 'def calculate_sum(numbers):\n    result = 0\n    for number in numbers:\n        result += number\n    return result',
-          adversarial_code: 'def calc_sum(nums):\n    res = 0\n    for num in nums:\n        res += num\n    return res',
-          attack_success: true,
-          queries_used: 127,
-          time_cost: '3.45',
-          identifier_replacements: [
-            { original: 'calculate_sum', adversarial: 'calc_sum', line: 1 },
-            { original: 'numbers', adversarial: 'nums', line: 1 },
-            { original: 'result', adversarial: 'res', line: 2 },
-            { original: 'number', adversarial: 'num', line: 3 }
-          ]
-        },
-        config: {
-          model_id: 'codebert',
-          max_queries: 200,
-          timeout: 60,
-          language: 'python',
-          attack_strategy: 'identifier_rename'
-        },
-        taskId: 'eval_task_' + Date.now()
-      };
-      setResult(mockData.result);
-      setConfig(mockData.config);
-      setTaskId(mockData.taskId);
+      message.warning('未找到安全测试报告，请重新执行测试');
+      navigate('/evaluation');
     }
-  }, []);
+  }, [navigate]);
 
   const handleBack = () => {
     navigate('/evaluation');
@@ -112,501 +157,516 @@ const EvaluationResult: React.FC = () => {
       message.success('代码已复制到剪贴板');
       setTimeout(() => setCopiedType(''), 2000);
     } catch (err) {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        setCopiedType(type);
-        message.success('代码已复制到剪贴板');
-        setTimeout(() => setCopiedType(''), 2000);
-      } catch (e) {
-        message.error('复制失败');
-      }
-      document.body.removeChild(textArea);
+      message.error('复制失败，请手动复制');
     }
   };
 
-  const handleDownloadReport = () => {
-    if (!result) return;
+  const handleDownload = () => {
+    if (!reportData) return;
     
-    const reportData = {
-      sample_id: result.sample_id,
-      label: result.label,
-      difficulty: result.difficulty,
-      attack_success: result.attack_success,
-      queries_used: result.queries_used,
-      time_cost: result.time_cost,
-      original_code: result.original_code,
-      adversarial_code: result.adversarial_code,
-      identifier_replacements: result.identifier_replacements,
-      config: config
-    };
-    
-    const jsonlContent = JSON.stringify(reportData);
-    const blob = new Blob([jsonlContent], { type: 'application/jsonl' });
+    const dataStr = JSON.stringify(reportData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `evaluation_result_${result.sample_id}.jsonl`;
+    link.href = url;
+    link.download = `evaluation_report_${reportData.report_id}.json`;
+    document.body.appendChild(link);
     link.click();
-    message.success('评估报告已下载');
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message.success('报告下载成功');
   };
 
-  if (!result) {
-    return <div>加载中...</div>;
+  // 解析标识符替换字符串
+  const parseIdentifierReplacements = (replacedStr: string | null): IdentifierReplacement[] => {
+    if (!replacedStr) return [];
+    const pairs = replacedStr.split(',').filter(p => p.trim());
+    return pairs.map((pair, index) => {
+      const [original, adversarial] = pair.split(':');
+      return {
+        original: original?.trim() || '',
+        adversarial: adversarial?.trim() || '',
+        line: index + 1
+      };
+    });
+  };
+
+  if (!reportData) {
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Text>加载中...</Text>
+      </div>
+    );
   }
 
-  // 性能指标数据（用于图表展示）
-  const performanceData = [
-    { metric: 'ASR', value: result.attack_success ? 100 : 0, color: '#ff4d4f' },
-    { metric: 'AMI', value: result.queries_used, color: '#1890ff', max: config?.max_queries || 200 },
-    { metric: 'ART', value: parseFloat(result.time_cost), color: '#52c41a', max: config?.timeout || 60 }
-  ];
-
   const replacementColumns = [
-    {
-      title: '行号',
-      dataIndex: 'line',
-      key: 'line',
-      width: 80,
-    },
     {
       title: '原始标识符',
       dataIndex: 'original',
       key: 'original',
-      render: (text: string) => (
-        <Tag color="red" style={{ fontFamily: 'monospace' }}>{text}</Tag>
-      ),
+      render: (text: string) => <Text code>{text}</Text>
     },
     {
       title: '对抗标识符',
       dataIndex: 'adversarial',
       key: 'adversarial',
-      render: (text: string) => (
-        <Tag color="green" style={{ fontFamily: 'monospace' }}>{text}</Tag>
-      ),
-    },
+      render: (text: string) => <Text code style={{ color: '#52c41a' }}>{text}</Text>
+    }
   ];
+
+  const identifierReplacements = selectedSample 
+    ? parseIdentifierReplacements(selectedSample.replaced_identifiers)
+    : [];
 
   return (
     <div>
-      <Row justify="space-between" align="middle" style={{ marginBottom: '24px' }}>
-        <Col>
-          <Title level={2}>
-            <Button 
-              type="text" 
-              icon={<ArrowLeftOutlined />} 
-              onClick={handleBack}
-              style={{ marginRight: '16px' }}
-            />
-            安全测试结果
-          </Title>
-        </Col>
-        <Col>
-          <Space>
-            <Button 
-              icon={<DownloadOutlined />}
-              onClick={handleDownloadReport}
-            >
-              下载JSONL报告
-            </Button>
-          </Space>
-        </Col>
-      </Row>
+      {/* 返回按钮和标题 */}
+      <div style={{ marginBottom: '24px' }}>
+        <Button 
+          icon={<ArrowLeftOutlined />} 
+          onClick={handleBack}
+          style={{ marginBottom: '16px' }}
+        >
+          返回安全测试页面
+        </Button>
+        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Title level={2}>安全测试结果</Title>
+          <Button 
+            type="primary" 
+            icon={<DownloadOutlined />}
+            onClick={handleDownload}
+          >
+            下载报告
+          </Button>
+        </Space>
+      </div>
 
-      {/* 核心性能指标 - 交互式图表 */}
-      <Card title={<span><BarChartOutlined /> 核心性能指标</span>} style={{ marginBottom: '24px' }}>
-        <Row gutter={[16, 16]}>
-          {performanceData.map((item, index) => (
-            <Col span={8} key={index}>
-              <Card size="small" style={{ background: '#fafafa', borderLeft: `4px solid ${item.color}` }}>
-                <Statistic
-                  title={
-                    <span style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                      {item.metric === 'ASR' ? '攻击成功率 (ASR)' : 
-                       item.metric === 'AMI' ? '平均模型调用次数 (AMI)' : 
-                       '平均运行时间 (ART)'}
-                    </span>
-                  }
-                  value={item.value}
-                  suffix={item.metric === 'ASR' ? '%' : item.metric === 'ART' ? '秒' : ''}
-                  valueStyle={{ color: item.color, fontSize: '28px', fontWeight: 'bold' }}
-                />
-                <Progress
-                  percent={item.max ? (item.value / item.max) * 100 : item.value}
-                  strokeColor={item.color}
-                  showInfo={false}
-                  strokeWidth={12}
-                  style={{ marginTop: '12px' }}
-                />
-                {item.max && (
-                  <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#666' }}>
-                    <span>0</span>
-                    <span>最大值: {item.max}</span>
-                  </div>
-                )}
+      {/* 测试配置信息 */}
+      <Card title="测试配置" style={{ marginBottom: '16px' }}>
+        <Descriptions bordered column={3}>
+          <Descriptions.Item label="报告ID" span={3}>{reportData.report_id}</Descriptions.Item>
+          <Descriptions.Item label="测试模型">
+            <Tag color="purple">{reportData.model_name}</Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="任务类型">
+            <Tag color="orange">
+              {reportData.task_type === 'clone-detection' ? '克隆检测' :
+               reportData.task_type === 'vulnerability-detection' ? '漏洞检测' :
+               reportData.task_type === 'code-summarization' ? '代码摘要' : reportData.task_type}
+            </Tag>
+          </Descriptions.Item>
+          <Descriptions.Item label="攻击方法">
+            {reportData.attack_methods.map(method => (
+              <Tag key={method} color="blue" style={{ marginRight: '4px' }}>
+                {method.toUpperCase()}
+              </Tag>
+            ))}
+          </Descriptions.Item>
+          <Descriptions.Item label="总样本数">{reportData.summary_stats?.total_samples || 0}</Descriptions.Item>
+          <Descriptions.Item label="成功攻击数">
+            <Text type="success">{reportData.summary_stats?.successful_attacks || 0}</Text>
+          </Descriptions.Item>
+          <Descriptions.Item label="失败攻击数">
+            <Text type="danger">{reportData.summary_stats?.failed_attacks || 0}</Text>
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      {/* 核心性能指标 */}
+      <Card title="核心性能指标" style={{ marginBottom: '16px' }}>
+        <Row gutter={16}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="ASR (攻击成功率)"
+                value={reportData.summary_stats?.asr || 0}
+                precision={1}
+                suffix="%"
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: (reportData.summary_stats?.asr || 0) >= 70 ? '#3f8600' : '#cf1322' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="AMI (平均模型调用)"
+                value={reportData.summary_stats?.ami || 0}
+                precision={1}
+                prefix={<BarChartOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="ART (平均响应时间)"
+                value={reportData.summary_stats?.art || 0}
+                precision={2}
+                suffix="分钟"
+                prefix={<ClockCircleOutlined />}
+                valueStyle={{ color: '#fa8c16' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="平均程序长度"
+                value={reportData.summary_stats?.avg_program_length || 0}
+                precision={1}
+                prefix={<CodeOutlined />}
+                valueStyle={{ color: '#722ed1' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* 性能指标对比图表 */}
+      <Card title="性能指标对比图表" style={{ marginBottom: '16px' }}>
+        <Row gutter={16}>
+          {reportData.method_metrics && Object.entries(reportData.method_metrics).map(([method, metrics]) => (
+            <Col span={8} key={method}>
+              <Card size="small" title={method.toUpperCase()}>
+                <Row gutter={[8, 8]}>
+                  <Col span={12}>
+                    <Statistic
+                      title="ASR"
+                      value={metrics.asr}
+                      precision={1}
+                      suffix="%"
+                      valueStyle={{ fontSize: '16px' }}
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic
+                      title="AMI"
+                      value={metrics.ami}
+                      precision={1}
+                      valueStyle={{ fontSize: '16px' }}
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic
+                      title="ART"
+                      value={metrics.art}
+                      precision={2}
+                      suffix="分"
+                      valueStyle={{ fontSize: '16px' }}
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Statistic
+                      title="成功率"
+                      value={(metrics.successful_attacks / metrics.total_samples * 100)}
+                      precision={1}
+                      suffix="%"
+                      valueStyle={{ fontSize: '16px' }}
+                    />
+                  </Col>
+                </Row>
               </Card>
             </Col>
           ))}
         </Row>
 
+        {/* 可视化对比图 */}
         <Divider />
-
-        {/* 可视化图表展示区域 - 柱状图模拟 */}
-        <Row gutter={16} style={{ marginTop: '24px' }}>
-          <Col span={24}>
-            <Card 
-              size="small" 
-              title={<span><LineChartOutlined /> 性能指标对比图表</span>}
-              style={{ background: '#fafafa' }}
-            >
-              <div style={{ padding: '20px' }}>
-                {/* 自定义柱状图 */}
-                <Row gutter={[32, 16]} align="bottom" style={{ minHeight: '200px' }}>
-                  {performanceData.map((item, index) => {
-                    const heightPercent = item.max ? (item.value / item.max) * 100 : item.value;
-                    const barHeight = Math.max(heightPercent * 1.5, 20); // 最小20px
-                    
-                    return (
-                      <Col span={8} key={index}>
-                        <div style={{ textAlign: 'center' }}>
-                          {/* 柱状图 */}
-                          <div style={{ 
-                            height: '200px', 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            justifyContent: 'flex-end',
-                            alignItems: 'center'
-                          }}>
-                            <div style={{
-                              width: '80%',
-                              height: `${barHeight}px`,
-                              background: `linear-gradient(180deg, ${item.color} 0%, ${item.color}aa 100%)`,
-                              borderRadius: '8px 8px 0 0',
-                              position: 'relative',
-                              transition: 'all 0.3s ease',
-                              boxShadow: `0 -4px 8px ${item.color}44`,
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              justifyContent: 'center',
-                              paddingTop: '8px'
-                            }}>
-                              <Text strong style={{ color: '#fff', fontSize: '16px' }}>
-                                {item.value}{item.metric === 'ASR' ? '%' : item.metric === 'ART' ? 's' : ''}
-                              </Text>
-                            </div>
-                          </div>
-                          
-                          {/* 标签 */}
-                          <div style={{ marginTop: '12px' }}>
-                            <Text strong style={{ fontSize: '14px', color: item.color }}>
-                              {item.metric}
-                            </Text>
-                            <br />
-                            <Text type="secondary" style={{ fontSize: '12px' }}>
-                              {item.metric === 'ASR' ? '攻击成功率' : 
-                               item.metric === 'AMI' ? '模型调用次数' : 
-                               '运行时间'}
-                            </Text>
-                          </div>
-                        </div>
-                      </Col>
-                    );
-                  })}
-                </Row>
-
-                {/* 图表说明 */}
-                <Divider />
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <div style={{ textAlign: 'center', padding: '12px', background: '#fff1f0', borderRadius: '6px' }}>
-                      <Text strong style={{ color: '#ff4d4f' }}>ASR: </Text>
-                      <Text>攻击成功率越高，模型越脆弱</Text>
+        <Row gutter={16} style={{ marginTop: '16px' }}>
+          <Col span={8}>
+            <Card size="small" title="ASR 对比">
+              <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '20px 0' }}>
+                {reportData.method_metrics && Object.entries(reportData.method_metrics).map(([method, metrics]) => (
+                  <div key={method} style={{ textAlign: 'center', flex: 1 }}>
+                    <div
+                      style={{
+                        height: `${metrics.asr * 1.5}px`,
+                        background: method === 'itgen' ? '#52c41a' : method === 'alert' ? '#1890ff' : '#faad14',
+                        margin: '0 10px',
+                        borderRadius: '4px 4px 0 0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {metrics.asr ? metrics.asr.toFixed(1) : 0}%
                     </div>
-                  </Col>
-                  <Col span={8}>
-                    <div style={{ textAlign: 'center', padding: '12px', background: '#e6f7ff', borderRadius: '6px' }}>
-                      <Text strong style={{ color: '#1890ff' }}>AMI: </Text>
-                      <Text>查询次数越少，攻击效率越高</Text>
+                    <Text type="secondary" style={{ fontSize: '12px', marginTop: '8px', display: 'block' }}>
+                      {method.toUpperCase()}
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card size="small" title="AMI 对比">
+              <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '20px 0' }}>
+                {reportData.method_metrics && Object.entries(reportData.method_metrics).map(([method, metrics]) => {
+                  const maxAMI = Math.max(...Object.values(reportData.method_metrics).map(m => m.ami || 0));
+                  const heightPercent = (metrics.ami / maxAMI) * 100;
+                  return (
+                    <div key={method} style={{ textAlign: 'center', flex: 1 }}>
+                      <div
+                        style={{
+                          height: `${heightPercent}px`,
+                          background: method === 'itgen' ? '#52c41a' : method === 'alert' ? '#1890ff' : '#faad14',
+                          margin: '0 10px',
+                          borderRadius: '4px 4px 0 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '12px'
+                        }}
+                      >
+                        {metrics.ami ? metrics.ami.toFixed(1) : 0}
+                      </div>
+                      <Text type="secondary" style={{ fontSize: '12px', marginTop: '8px', display: 'block' }}>
+                        {method.toUpperCase()}
+                      </Text>
                     </div>
-                  </Col>
-                  <Col span={8}>
-                    <div style={{ textAlign: 'center', padding: '12px', background: '#f6ffed', borderRadius: '6px' }}>
-                      <Text strong style={{ color: '#52c41a' }}>ART: </Text>
-                      <Text>运行时间越短，攻击成本越低</Text>
+                  );
+                })}
+              </div>
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card size="small" title="ART 对比">
+              <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '20px 0' }}>
+                {reportData.method_metrics && Object.entries(reportData.method_metrics).map(([method, metrics]) => {
+                  const maxART = Math.max(...Object.values(reportData.method_metrics).map(m => m.art || 0));
+                  const heightPercent = (metrics.art / maxART) * 100;
+                  return (
+                    <div key={method} style={{ textAlign: 'center', flex: 1 }}>
+                      <div
+                        style={{
+                          height: `${heightPercent}px`,
+                          background: method === 'itgen' ? '#52c41a' : method === 'alert' ? '#1890ff' : '#faad14',
+                          margin: '0 10px',
+                          borderRadius: '4px 4px 0 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '12px'
+                        }}
+                      >
+                        {metrics.art ? metrics.art.toFixed(2) : 0}
+                      </div>
+                      <Text type="secondary" style={{ fontSize: '12px', marginTop: '8px', display: 'block' }}>
+                        {method.toUpperCase()}
+                      </Text>
                     </div>
-                  </Col>
-                </Row>
-
-                {/* 综合评估 */}
-                <div style={{ 
-                  marginTop: '20px', 
-                  padding: '16px', 
-                  background: result.attack_success ? '#fff1f0' : '#f6ffed',
-                  borderRadius: '8px',
-                  border: result.attack_success ? '2px solid #ffccc7' : '2px solid #d9f7be'
-                }}>
-                  <Row gutter={16} align="middle">
-                    <Col span={4} style={{ textAlign: 'center' }}>
-                      {result.attack_success ? (
-                        <CloseCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f' }} />
-                      ) : (
-                        <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a' }} />
-                      )}
-                    </Col>
-                    <Col span={20}>
-                      <Title level={4} style={{ margin: 0, color: result.attack_success ? '#ff4d4f' : '#52c41a' }}>
-                        {result.attack_success ? '⚠️ 模型存在安全风险' : '✅ 模型通过安全测试'}
-                      </Title>
-                      <Paragraph style={{ margin: '8px 0 0 0' }}>
-                        {result.attack_success ? (
-                          <>
-                            本次攻击成功生成对抗样本，模型在面对恶意输入时存在脆弱性。
-                            建议进行对抗性微调以提升模型鲁棒性。
-                            <br />
-                            <Text strong>查询效率: </Text>
-                            <Text>{((result.queries_used / (config?.max_queries || 200)) * 100).toFixed(1)}%</Text>
-                            {' | '}
-                            <Text strong>时间消耗: </Text>
-                            <Text>{result.time_cost}秒 (限制:{config?.timeout || 60}秒)</Text>
-                          </>
-                        ) : (
-                          <>
-                            本次攻击未能成功生成对抗样本，模型在当前测试条件下展现出较好的鲁棒性。
-                            但仍建议进行更多测试以全面评估模型安全性。
-                          </>
-                        )}
-                      </Paragraph>
-                    </Col>
-                  </Row>
-                </div>
+                  );
+                })}
               </div>
             </Card>
           </Col>
         </Row>
       </Card>
 
-      {/* 测试信息 */}
-      <Card title="测试信息" style={{ marginBottom: '24px' }}>
-        <Descriptions bordered column={2}>
-          <Descriptions.Item label="样本ID">{result.sample_id}</Descriptions.Item>
-          <Descriptions.Item label="任务ID">{taskId}</Descriptions.Item>
-          <Descriptions.Item label="标签">{result.label}</Descriptions.Item>
-          <Descriptions.Item label="难度">
-            <Tag color={result.difficulty === 'hard' ? 'red' : result.difficulty === 'medium' ? 'orange' : 'green'}>
-              {result.difficulty.toUpperCase()}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="攻击策略">{config?.attack_strategy || 'identifier_rename'}</Descriptions.Item>
-          <Descriptions.Item label="编程语言">{config?.language || 'python'}</Descriptions.Item>
-          <Descriptions.Item label="攻击结果">
-            {result.attack_success ? (
-              <Tag icon={<CheckCircleOutlined />} color="success">成功</Tag>
-            ) : (
-              <Tag icon={<CloseCircleOutlined />} color="error">失败</Tag>
-            )}
-          </Descriptions.Item>
-          <Descriptions.Item label="查询次数">
-            {result.queries_used} / {config?.max_queries || 200}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
-
-      {/* 对抗样本浏览器 - 代码差异对比 */}
-      <Card 
-        title={<span><PieChartOutlined /> 对抗样本浏览器</span>}
-        extra={
-          <Select
-            value={selectedView}
-            onChange={setSelectedView}
-            style={{ width: 150 }}
-          >
-            <Option value="side-by-side">并排对比</Option>
-            <Option value="unified">统一视图</Option>
-          </Select>
-        }
-        style={{ marginBottom: '24px' }}
-      >
-        <Tabs defaultActiveKey="code">
-          <TabPane tab="代码对比" key="code">
-            {selectedView === 'side-by-side' ? (
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Card 
-                    size="small" 
-                    title="原始代码" 
-                    extra={
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CopyOutlined />}
-                        onClick={() => handleCopy(result.original_code, 'original')}
-                        style={{
-                          color: copiedType === 'original' ? '#52c41a' : undefined,
-                          fontWeight: copiedType === 'original' ? 'bold' : 'normal'
-                        }}
-                      >
-                        {copiedType === 'original' ? '已复制' : '复制'}
-                      </Button>
+      {/* 对抗样本浏览器 */}
+      <Card title="对抗样本浏览器" style={{ marginBottom: '16px' }}>
+        {/* 样本选择器 */}
+        <div style={{ marginBottom: '16px' }}>
+          <Space>
+            <Text strong>选择样本:</Text>
+            <Select
+              style={{ width: 300 }}
+              value={selectedSample?.index}
+              onChange={(value) => {
+                const convertedSamples = reportData.sample_results.map(convertBackendSample);
+                const sample = convertedSamples.find(s => s.index === value);
+                setSelectedSample(sample || null);
+              }}
+            >
+              {reportData.sample_results.map((backendSample) => {
+                const converted = convertBackendSample(backendSample);
+                return (
+                  <Option key={converted.index} value={converted.index}>
+                    样本 #{converted.index} - {converted.attack_success ? 
+                      <Tag color="success" style={{ marginLeft: '8px' }}>成功</Tag> : 
+                      <Tag color="error" style={{ marginLeft: '8px' }}>失败</Tag>
                     }
-                  >
-                    <pre style={{
-                      background: '#f5f5f5',
-                      padding: '16px',
-                      borderRadius: '4px',
-                      fontSize: '13px',
-                      lineHeight: '1.6',
-                      fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                      overflow: 'auto',
-                      maxHeight: '400px'
-                    }}>
-                      {result.original_code}
-                    </pre>
-                  </Card>
-                </Col>
-                <Col span={12}>
-                  <Card 
-                    size="small" 
-                    title="对抗代码" 
-                    extra={
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CopyOutlined />}
-                        onClick={() => handleCopy(result.adversarial_code, 'adversarial')}
-                        style={{
-                          color: copiedType === 'adversarial' ? '#52c41a' : undefined,
-                          fontWeight: copiedType === 'adversarial' ? 'bold' : 'normal'
-                        }}
-                      >
-                        {copiedType === 'adversarial' ? '已复制' : '复制'}
-                      </Button>
-                    }
-                  >
-                    <pre style={{
-                      background: '#e6fffb',
-                      padding: '16px',
-                      borderRadius: '4px',
-                      fontSize: '13px',
-                      lineHeight: '1.6',
-                      fontFamily: 'Monaco, Consolas, "Courier New", monospace',
-                      overflow: 'auto',
-                      maxHeight: '400px',
-                      border: '1px solid #b7eb8f'
-                    }}>
-                      {result.adversarial_code}
-                    </pre>
-                  </Card>
-                </Col>
-              </Row>
-            ) : (
-              <div>
-                <Card size="small" title="统一视图">
-                  <div style={{ fontFamily: 'Monaco, Consolas, "Courier New", monospace', fontSize: '13px' }}>
-                    {result.original_code.split('\n').map((line, index) => {
-                      const advLine = result.adversarial_code.split('\n')[index] || '';
-                      const isDifferent = line !== advLine;
-                      return (
-                        <div key={index} style={{ marginBottom: '8px' }}>
-                          <div style={{
-                            background: isDifferent ? '#fff1f0' : '#f5f5f5',
-                            padding: '4px 8px',
-                            borderLeft: isDifferent ? '3px solid #ff4d4f' : '3px solid #d9d9d9'
-                          }}>
-                            <Text type="secondary" style={{ marginRight: '8px', fontFamily: 'monospace' }}>
-                              {index + 1}
-                            </Text>
-                            <Text delete={isDifferent}>{line}</Text>
-                          </div>
-                          {isDifferent && (
-                            <div style={{
-                              background: '#f6ffed',
-                              padding: '4px 8px',
-                              borderLeft: '3px solid #52c41a',
-                              marginTop: '2px'
-                            }}>
-                              <Text type="secondary" style={{ marginRight: '8px', fontFamily: 'monospace' }}>
-                                {index + 1}
-                              </Text>
-                              <Text style={{ color: '#52c41a' }}>{advLine}</Text>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              </div>
-            )}
-          </TabPane>
+                  </Option>
+                );
+              })}
+            </Select>
+            <Text type="secondary">
+              查询次数: {selectedSample?.query_times || 0} | 
+              时间: {selectedSample?.time_cost ? selectedSample.time_cost.toFixed(2) : 0}分钟
+            </Text>
+          </Space>
+        </div>
 
-          <TabPane tab="标识符替换" key="replacements">
-            <Card size="small">
-              <Table
-                columns={replacementColumns}
-                dataSource={result.identifier_replacements}
-                pagination={false}
-                size="small"
-                rowKey={(record) => `${record.line}-${record.original}`}
-              />
-              <Divider />
-              <Statistic
-                title="总替换数"
-                value={result.identifier_replacements.length}
-                prefix={<CheckCircleOutlined />}
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </Card>
-          </TabPane>
-
-          <TabPane tab="差异统计" key="stats">
-            <Row gutter={16}>
-              <Col span={8}>
-                <Card size="small">
-                  <Statistic
-                    title="代码行数"
-                    value={result.original_code.split('\n').length}
-                    prefix={<LineChartOutlined />}
-                  />
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card size="small">
-                  <Statistic
-                    title="标识符替换"
-                    value={result.identifier_replacements.length}
-                    prefix={<CheckCircleOutlined />}
-                    valueStyle={{ color: '#52c41a' }}
-                  />
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card size="small">
-                  <Statistic
-                    title="语义相似度"
-                    value={95}
-                    suffix="%"
-                    prefix={<PieChartOutlined />}
-                    valueStyle={{ color: '#1890ff' }}
-                  />
-                </Card>
-              </Col>
-            </Row>
-
-            <Divider />
-
-            <div style={{ background: '#f0f2f5', padding: '16px', borderRadius: '8px' }}>
-              <Title level={5}>差异分析</Title>
-              <Paragraph>
-                <Text strong>修改类型：</Text>标识符重命名<br />
-                <Text strong>修改位置：</Text>{result.identifier_replacements.map(r => r.line).join(', ')} 行<br />
-                <Text strong>代码结构：</Text>保持不变<br />
-                <Text strong>语义等价性：</Text>完全等价<br />
-              </Paragraph>
+        {selectedSample && (
+          <>
+            {/* 对比方式选择 */}
+            <div style={{ marginBottom: '16px' }}>
+              <Space>
+                <Text strong>对比方式:</Text>
+                <Select
+                  value={selectedView}
+                  onChange={setSelectedView}
+                  style={{ width: 150 }}
+                >
+                  <Option value="side-by-side">并排对比</Option>
+                  <Option value="unified">统一视图</Option>
+                </Select>
+              </Space>
             </div>
-          </TabPane>
-        </Tabs>
+
+            <Tabs defaultActiveKey="comparison">
+              <TabPane tab="代码对比" key="comparison">
+                {selectedSample.adversarial_code ? (
+                  selectedView === 'side-by-side' ? (
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Card 
+                          size="small" 
+                          title="原始代码" 
+                          extra={
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<CopyOutlined />}
+                              onClick={() => handleCopy(selectedSample.original_code, 'original')}
+                              style={{
+                                color: copiedType === 'original' ? '#52c41a' : undefined
+                              }}
+                            >
+                              {copiedType === 'original' ? '已复制' : '复制'}
+                            </Button>
+                          }
+                        >
+                          <pre style={{
+                            background: '#f5f5f5',
+                            padding: '16px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            lineHeight: '1.6',
+                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                            overflow: 'auto',
+                            maxHeight: '400px',
+                            margin: 0
+                          }}>
+                            {selectedSample.original_code}
+                          </pre>
+                        </Card>
+                      </Col>
+                      <Col span={12}>
+                        <Card 
+                          size="small" 
+                          title="对抗代码" 
+                          extra={
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<CopyOutlined />}
+                              onClick={() => handleCopy(selectedSample.adversarial_code || '', 'adversarial')}
+                              style={{
+                                color: copiedType === 'adversarial' ? '#52c41a' : undefined
+                              }}
+                            >
+                              {copiedType === 'adversarial' ? '已复制' : '复制'}
+                            </Button>
+                          }
+                        >
+                          <pre style={{
+                            background: '#e6fffb',
+                            padding: '16px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            lineHeight: '1.6',
+                            fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                            overflow: 'auto',
+                            maxHeight: '400px',
+                            border: '1px solid #b7eb8f',
+                            margin: 0
+                          }}>
+                            {selectedSample.adversarial_code}
+                          </pre>
+                        </Card>
+                      </Col>
+                    </Row>
+                  ) : (
+                    <Card size="small" title="统一视图">
+                      <div style={{ fontFamily: 'Monaco, Consolas, "Courier New", monospace', fontSize: '13px' }}>
+                        {selectedSample.original_code.split('\n').map((line, index) => {
+                          const advLine = selectedSample.adversarial_code?.split('\n')[index] || '';
+                          const isDifferent = line !== advLine;
+                          return (
+                            <div key={index} style={{ marginBottom: '8px' }}>
+                              <div style={{
+                                background: isDifferent ? '#fff1f0' : '#f5f5f5',
+                                padding: '4px 8px',
+                                borderLeft: isDifferent ? '3px solid #ff4d4f' : '3px solid #d9d9d9'
+                              }}>
+                                <Text type="secondary" style={{ marginRight: '8px', fontFamily: 'monospace' }}>
+                                  {index + 1}
+                                </Text>
+                                <Text delete={isDifferent}>{line}</Text>
+                              </div>
+                              {isDifferent && advLine && (
+                                <div style={{
+                                  background: '#f6ffed',
+                                  padding: '4px 8px',
+                                  borderLeft: '3px solid #52c41a',
+                                  marginTop: '2px'
+                                }}>
+                                  <Text type="secondary" style={{ marginRight: '8px', fontFamily: 'monospace' }}>
+                                    {index + 1}
+                                  </Text>
+                                  <Text style={{ color: '#52c41a' }}>{advLine}</Text>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  )
+                ) : (
+                  <Card size="small">
+                    <Text type="danger">攻击未成功，无对抗代码生成</Text>
+                  </Card>
+                )}
+              </TabPane>
+
+              <TabPane tab="标识符替换" key="replacements">
+                <Card size="small">
+                  {identifierReplacements.length > 0 ? (
+                    <>
+                      <Table
+                        columns={replacementColumns}
+                        dataSource={identifierReplacements}
+                        pagination={false}
+                        size="small"
+                        rowKey={(record) => `${record.line}-${record.original}`}
+                      />
+                      <Divider />
+                      <Statistic
+                        title="总替换数"
+                        value={identifierReplacements.length}
+                        prefix={<CheckCircleOutlined />}
+                        valueStyle={{ color: '#1890ff' }}
+                      />
+                    </>
+                  ) : (
+                    <Text type="secondary">无标识符替换</Text>
+                  )}
+                </Card>
+              </TabPane>
+            </Tabs>
+          </>
+        )}
       </Card>
 
       {/* 返回按钮 */}
@@ -622,4 +682,3 @@ const EvaluationResult: React.FC = () => {
 };
 
 export default EvaluationResult;
-
