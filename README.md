@@ -10,7 +10,7 @@ This project is the open-source repository of ITGen_web, containing the frontend
 
 ### About Our Work
 
-#### IEGen
+#### ITGen
 
 GitHub: https://github.com/unknownhl/ITGen
 
