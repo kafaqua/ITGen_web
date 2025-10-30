@@ -4,13 +4,13 @@ This project is the open-source repository of ITGen_web, containing the frontend
 
 ### Video Demonstration
 
-[![](web/Cover.png)](https://youtu.be/jKcy4OORqPk)
+[![](web/cover.png)](https://youtu.be/jKcy4OORqPk)
 
 ---
 
 ### About Our Work
 
-#### IEGen
+#### ITGen
 
 GitHub: https://github.com/unknownhl/ITGen
 
