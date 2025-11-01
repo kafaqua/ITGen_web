@@ -1,0 +1,41 @@
+# 前端依赖包列表
+# 此文件列出了前端项目所需的所有 npm 包及其版本
+# 安装命令: npm install
+
+# React 核心框架
+react==18.2.0
+react-dom==18.2.0
+react-router-dom==6.8.0
+
+# Ant Design UI 组件库
+antd==5.12.0
+@ant-design/icons==5.2.0
+
+# TypeScript 类型定义
+typescript==4.9.0
+@types/node==16.18.0
+@types/react==18.2.0
+@types/react-dom==18.2.0
+@types/react-syntax-highlighter==15.5.0
+
+# HTTP 客户端
+axios==1.6.0
+
+# WebSocket 客户端
+socket.io-client==4.7.0
+
+# 图表库
+recharts==3.3.0
+chart.js==4.4.0
+react-chartjs-2==5.2.0
+
+# 代码语法高亮
+react-syntax-highlighter==15.5.0
+prismjs==1.29.0
+
+# React 构建工具
+react-scripts==5.0.1
+
+# 性能监控
+web-vitals==2.1.0
+
