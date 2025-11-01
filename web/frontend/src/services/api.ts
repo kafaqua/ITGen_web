@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://192.168.3.115:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 class ApiService {
   private api: AxiosInstance;
@@ -59,7 +59,7 @@ class ApiService {
       is_predefined: boolean;
     }>;
   }> {
-    const response = await this.api.get('/api/models');
+    const response = await this.api.get('/models');
     return response.data;
   }
 
@@ -72,89 +72,89 @@ class ApiService {
     max_length: number;
     supported_tasks: string[];
   }): Promise<{ success: boolean; model_id?: string; error?: string }> {
-    const response = await this.api.post('/api/models', modelData);
+    const response = await this.api.post('/models', modelData);
     return response.data;
   }
 
   async deleteModel(modelId: string): Promise<{ success: boolean; error?: string }> {
-    const response = await this.api.delete(`/api/models/${modelId}`);
+    const response = await this.api.delete(`/models/${modelId}`);
     return response.data;
   }
 
   async testModel(modelId: string, testData: { task_type: string; [k: string]: any }): Promise<any> {
-    const response = await this.api.post(`/api/models/${modelId}/test`, testData);
+    const response = await this.api.post(`/models/${modelId}/test`, testData);
     return response.data;
   }
 
   // 对抗攻击API
   async startAttack(attackData: any) {
     // 攻击启动只需要短超时，因为只是创建任务，不等待完成
-    const response = await this.api.post('/api/attack/start', attackData, {
+    const response = await this.api.post('/attack/start', attackData, {
       timeout: 60000 // 60秒足够启动任务
     });
     return response.data;
   }
 
   async getAttackStatus(taskId: string) {
-    const response = await this.api.get(`/api/attack/status/${taskId}`);
+    const response = await this.api.get(`/attack/status/${taskId}`);
     return response.data;
   }
 
   async getAttackResults(taskId: string) {
-    const response = await this.api.get(`/api/attack/results/${taskId}`);
+    const response = await this.api.get(`/attack/results/${taskId}`);
     return response.data;
   }
 
   async startAttackWithConfig(config: any) {
-    const response = await this.api.post('/api/attack/start', config);
+    const response = await this.api.post('/attack/start', config);
     return response.data;
   }
 
   // 评估报告API
   async startEvaluation(evaluationData: any) {
-    const response = await this.api.post('/api/evaluation/start', evaluationData);
+    const response = await this.api.post('/evaluation/start', evaluationData);
     return response.data;
   }
 
   async getEvaluationReports() {
-    const response = await this.api.get('/api/evaluation/reports');
+    const response = await this.api.get('/evaluation/reports');
     return response.data;
   }
 
   async getEvaluationReport(reportId: string) {
-    const response = await this.api.get(`/api/evaluation/reports/${reportId}`);
+    const response = await this.api.get(`/evaluation/reports/${reportId}`);
     return response.data;
   }
 
   // 安全测试结果API（详细数据）
   async getEvaluationResults(taskId: string) {
-    const response = await this.api.get(`/api/evaluation/results/${taskId}`);
+    const response = await this.api.get(`/evaluation/results/${taskId}`);
     return response.data;
   }
 
   async getEvaluationStatus(taskId: string) {
-    const response = await this.api.get(`/api/evaluation/status/${taskId}`);
+    const response = await this.api.get(`/evaluation/status/${taskId}`);
     return response.data;
   }
 
   // 对抗性微调API
   async startFinetuning(finetuningData: any) {
-    const response = await this.api.post('/api/finetuning/start', finetuningData);
+    const response = await this.api.post('/finetuning/start', finetuningData);
     return response.data;
   }
 
   async getFinetuningStatus(taskId: string) {
-    const response = await this.api.get(`/api/finetuning/status/${taskId}`);
+    const response = await this.api.get(`/finetuning/status/${taskId}`);
     return response.data;
   }
 
   async getFinetuningResults(taskId: string) {
-    const response = await this.api.get(`/api/finetuning/results/${taskId}`);
+    const response = await this.api.get(`/finetuning/results/${taskId}`);
     return response.data;
   }
 
   async downloadModel(modelId: string) {
-    const response = await this.api.get(`/api/models/${modelId}/download`, {
+    const response = await this.api.get(`/models/${modelId}/download`, {
       responseType: 'blob'
     });
     return response.data;
@@ -162,18 +162,18 @@ class ApiService {
 
   // 批量测试API
   async startBatchTesting(batchData: any) {
-    const response = await this.api.post('/api/batch-testing/start', batchData);
+    const response = await this.api.post('/batch-testing/start', batchData);
     return response.data;
   }
 
   async getBatchTestingStatus(taskId: string) {
-    const response = await this.api.get(`/api/batch-testing/status/${taskId}`);
+    const response = await this.api.get(`/batch-testing/status/${taskId}`);
     return response.data;
   }
 
   // 批量测试结果API
   async getBatchTestingResults(taskId: string) {
-    const response = await this.api.get(`/api/batch-testing/results/${taskId}`);
+    const response = await this.api.get(`/batch-testing/results/${taskId}`);
     return response.data;
   }
 
@@ -198,7 +198,7 @@ class ApiService {
     if (options?.modelType) formData.append('model_type', options.modelType);
     if (options?.datasetName) formData.append('dataset_name', options.datasetName);
     
-    const response = await this.api.post('/api/upload', formData, {
+    const response = await this.api.post('/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -208,24 +208,24 @@ class ApiService {
 
   // 任务状态API
   async getTaskStatus(taskId: string) {
-    const response = await this.api.get(`/api/tasks/status/${taskId}`);
+    const response = await this.api.get(`/tasks/status/${taskId}`);
     return response.data;
   }
 
   async getAllTasks() {
-    const response = await this.api.get('/api/tasks');
+    const response = await this.api.get('/tasks');
     return response.data;
   }
 
   // 健康检查API
   async healthCheck() {
-    const response = await this.api.get('/api/health');
+    const response = await this.api.get('/health');
     return response.data;
   }
 
   // 模型下载API
   async downloadModelFile(modelPath: string, fileName: string) {
-    const response = await this.api.get(`/api/models/download`, {
+    const response = await this.api.get(`/models/download`, {
       params: { path: modelPath },
       responseType: 'blob'
     });
