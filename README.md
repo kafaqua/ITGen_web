@@ -7,6 +7,9 @@ This project is the open-source repository of ITGen_web, containing the frontend
 [![](web/cover.png)](https://youtu.be/jKcy4OORqPk)
 
 ---
+### Our Web
+
+URL: http://8.148.254.195/
 
 ### About Our Work
 
